@@ -1,0 +1,13 @@
+{
+ "result": {
+  "content": [
+   {
+    "type": "text",
+    "text": "MCP error -32602: Input validation error: Invalid arguments for tool legal_research: [\n  {\n    \"expected\": \"number\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"law_id\"\n    ],\n    \"message\": \"Invalid input: expected number, received string\"\n  }\n]"
+   }
+  ],
+  "isError": true
+ },
+ "jsonrpc": "2.0",
+ "id": 2
+}
