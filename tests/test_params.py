@@ -1,8 +1,10 @@
 import ast
+import importlib.util
 import itertools
 import os
 import re
 import sys
+import sysconfig
 
 from conftest import SCRIPTS, ROOT
 
@@ -102,7 +104,17 @@ def test_phrases_tags(phrases):
 def test_runtime_scripts_stdlib_only():
     """런타임 스크립트는 표준 라이브러리와 서로만 import 한다(받는 PC 에 설치 요구 없음)."""
     local = {os.path.splitext(n)[0] for n in os.listdir(SCRIPTS) if n.endswith(".py")}
-    std = set(sys.stdlib_module_names)
+    std_root = os.path.realpath(sysconfig.get_paths()["stdlib"])
+
+    def is_std(m):
+        if hasattr(sys, "stdlib_module_names"):  # 3.10+
+            return m in sys.stdlib_module_names
+        if m in sys.builtin_module_names:  # 3.9 — 설치 위치로 판정
+            return True
+        spec = importlib.util.find_spec(m)
+        origin = os.path.realpath(spec.origin) if spec and spec.origin else ""
+        return origin.startswith(std_root) and "site-packages" not in origin
+
     for n in os.listdir(SCRIPTS):
         if not n.endswith(".py"):
             continue
@@ -114,7 +126,7 @@ def test_runtime_scripts_stdlib_only():
             elif isinstance(node, ast.ImportFrom) and node.module:
                 mods = [node.module.split(".")[0]]
             for m in mods:
-                assert m in std or m in local, (n, m)
+                assert m in local or is_std(m), (n, m)
 
 
 def test_python39_syntax():
@@ -123,3 +135,30 @@ def test_python39_syntax():
         if n.endswith(".py"):
             src = open(os.path.join(SCRIPTS, n), encoding="utf-8").read()
             ast.parse(src, feature_version=(3, 9))
+
+
+# ARCHITECTURE.md 「L3 안의 방향」 — 함수 안 지연 import 까지 본다.
+ALLOWED_LOCAL = {
+    "_paths": set(),
+    "state": {"_paths"},
+    "score": {"_paths"},
+    "cite_check": {"_paths"},
+    "intent": {"_paths", "state"},
+    "memo": {"_paths", "state"},
+    "check_draft": {"_paths", "state"},
+    "render_docx": {"_paths", "state", "check_draft"},
+}
+
+
+def test_runtime_import_direction():
+    local = {os.path.splitext(n)[0] for n in os.listdir(SCRIPTS) if n.endswith(".py")}
+    assert local == set(ALLOWED_LOCAL), "새 스크립트는 ARCHITECTURE.md 와 ALLOWED_LOCAL 에 방향을 적는다"
+    for mod in sorted(local):
+        tree = ast.parse(open(os.path.join(SCRIPTS, mod + ".py"), encoding="utf-8").read())
+        used = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                used |= {a.name.split(".")[0] for a in node.names}
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                used.add(node.module.split(".")[0])
+        assert used & local <= ALLOWED_LOCAL[mod], (mod, sorted(used & local - ALLOWED_LOCAL[mod]))

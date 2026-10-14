@@ -104,7 +104,7 @@ def judge_run(combo, parsed, md, design, ph):
 
 
 def jev_blind(texts):
-    sys.path.insert(0, "/Users/edb_development/workspace/shared")
+    sys.path.insert(0, os.environ.get("JEV_DIR") or os.path.expanduser("~/workspace/shared"))  # Jev 클라이언트 jev.py 위치
     import jev
     crit = {"W": "전부 승소 — 상대 주장 전부를 다투고 청구 전부 인용·전부 기각을 구한다",
             "M": "손해 최소화 — 일부를 인정하고 공제·감액으로 확실한 부분을 지킨다",

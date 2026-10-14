@@ -128,9 +128,9 @@ def draft(run_dir, state, design_path, case_dir, brief, claude, model):
                                  py=sys.executable, wd=wd)
     env = dict(os.environ)
     env["INTENT_BRIEF_TODAY"] = TODAY
-    tok = os.path.expanduser("~/.claude/tokens/edb")
-    if "CLAUDE_CODE_OAUTH_TOKEN" not in env and os.path.exists(tok):
-        env["CLAUDE_CODE_OAUTH_TOKEN"] = open(tok, encoding="utf-8").read().strip()  # 무인 claude -p 는 edb 계정
+    tok = os.environ.get("INTENT_BRIEF_TOKEN_FILE")  # 무인 claude -p 에 쓸 OAuth 토큰 파일(선택)
+    if "CLAUDE_CODE_OAUTH_TOKEN" not in env and tok and os.path.exists(tok):
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = open(tok, encoding="utf-8").read().strip()
     cmd = [claude, "-p", "--plugin-dir", REPO, "--permission-mode", "bypassPermissions", "--output-format", "json"]
     if model:
         cmd += ["--model", model]

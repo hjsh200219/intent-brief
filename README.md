@@ -42,7 +42,7 @@ repo 폴더를 받아 두었다면 로컬 경로로도 설치할 수 있습니�
 ```
 uv run --python 3.11 --with pytest --with python-docx==1.2.0 pytest tests/
 ```
-런타임 스크립트(`skills/intent-brief/scripts/`)는 표준 라이브러리만 씁니다(테스트로 확인). `dev/` 는 개발 전용입니다.
+런타임 스크립트(`skills/intent-brief/scripts/`)는 표준 라이브러리만 씁니다(테스트로 확인). `dev/` 는 개발 전용입니다. 개발 지도·불변 조건은 [AGENTS.md](AGENTS.md).
 
 ## 라이선스
 

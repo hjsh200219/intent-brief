@@ -13,7 +13,9 @@ import memo as M
 import state as S
 from conftest import F1, F2, F3, F1_BASE, make_state
 
-DEMO = "/Users/edb_development/workspace/ProjectLawFirm/agent-lawfirm/docs/references/업무관리시스템_데모"
+# 하네스 데모 원본(읽기 전용). 다른 PC 에서는 INTENT_BRIEF_DEMO_DIR 로 지정, 없으면 계약 테스트를 건너뛴다.
+DEMO = os.environ.get("INTENT_BRIEF_DEMO_DIR") or os.path.expanduser(
+    "~/workspace/ProjectLawFirm/agent-lawfirm/docs/references/업무관리시스템_데모")
 
 
 # ── 작업 폴더·상태 ─────────────────────────────────────────────
