@@ -598,10 +598,11 @@
     "admitted_amount_missing": "[확인 필요: 인정액]"
   },
   "relief": {
-    "plaintiff_full": "원고의 청구금액 {claim} 전부를 인용하여 주시기 바랍니다",
-    "plaintiff_deduct": "인정한 {admitted}을 공제한 나머지 {remaining}을 인용하여 주시기 바랍니다",
-    "plaintiff_deduct_scope": "인정한 부분([확인 필요: 인정액])을 공제한 나머지를 인용하여 주시기 바랍니다",
-    "plaintiff_deduct_noclaim": "인정한 {admitted}을 공제한 나머지([확인 필요: 청구금액])를 인용하여 주시기 바랍니다",
+    "plaintiff_full": "원고의 청구금액 {claim}{interest} 전부를 인용하여 주시기 바랍니다",
+    "plaintiff_deduct": "인정한 {admitted}을 공제한 나머지 {remaining}{interest}을 인용하여 주시기 바랍니다",
+    "plaintiff_deduct_scope": "인정한 부분([확인 필요: 인정액])을 공제한 나머지 금액{interest}을 인용하여 주시기 바랍니다",
+    "plaintiff_deduct_noclaim": "인정한 {admitted}을 공제한 나머지 금액([확인 필요: 청구금액]){interest}을 인용하여 주시기 바랍니다",
+    "interest": " 및 이에 대한 지연손해금",
     "defendant": "원고의 청구를 기각하여 주시기 바랍니다"
   }
 }

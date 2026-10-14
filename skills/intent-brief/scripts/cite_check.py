@@ -222,8 +222,10 @@ def parse_law_search(text, name):
         return None
     if "검색 결과" not in text and "총" not in text:
         raise ValueError("format")
+    want = re.sub(r"\s+", "", name)
     for m in _ITEM.finditer(text):
-        if re.sub(r"\s+", "", m.group(2)) == re.sub(r"\s+", "", name):
+        got = re.sub(r"\s*\([^)]*\)\s*$", "", m.group(2))  # 「… 특례법 (소송촉진법)」의 약칭 괄호
+        if re.sub(r"\s+", "", got) == want:
             return int(m.group(1))
     return None
 
@@ -304,8 +306,10 @@ class Checker:
         if c.get("date"):
             base.update(date_from=c["date"], date_to=c["date"])
         attempts = [dict(base)] if c.get("date") else [dict(base, search_type="case_name")]
+        cited_by = 0
         for args in attempts:
             total, items = parse_case_search(self._call("case_research", dict(args, page=1)))
+            cited_by = max(cited_by, total)
             hit = next((it for it in items if _norm_no(it["number"]) == target), None)
             pages_seen = 1
             if not hit and total > PAGE_SIZE:
@@ -327,7 +331,18 @@ class Checker:
                 return res
             if total == 0 and not c.get("date") and args.get("search_type") == "case_name":
                 attempts.append(dict(base, search_type="full_text"))
-        return {"status": "unverified", "detail": "사건번호 정확 일치 없음"}
+        if c.get("date"):
+            # 선고일로 좁힌 검색에 없으면 날짜 없이 한 번 더 — 선고일만 틀린 인용과 인용 건수를 가린다
+            loose = {"action": "search_cases", "query": c["number"], "display": PAGE_SIZE, "search_type": "full_text", "page": 1}
+            total, items = parse_case_search(self._call("case_research", loose))
+            cited_by = max(cited_by, total)
+            hit = next((it for it in items if _norm_no(it["number"]) == target), None)
+            if hit:
+                return {"status": "unverified", "detail": "선고일 불일치(원문 %s)" % hit["date"], "case_id": hit["case_id"]}
+        detail = "사건번호 정확 일치 없음(법제처 원문 없음)"
+        if cited_by:
+            detail += " · 이 번호를 인용한 다른 판결 %d건 검색됨 — 원문은 변호사가 확인" % cited_by
+        return {"status": "unverified", "detail": detail, "cited_by": cited_by}
 
     def check(self, c):
         try:

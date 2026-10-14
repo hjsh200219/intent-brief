@@ -113,6 +113,7 @@ def test_purge(home, case):
 def test_read_case_f1():
     r = M.read_case(F1)
     assert r["connected"] and r["side_guess"] == "원고" and r["claim_amount_guess"] == 50000000
+    assert r["claim_interest_guess"] is True
     assert [i["id"] for i in r["issues"]] == [1, 2]
     assert r["schedule"] == {"due_date": "2026-10-13", "next_hearing": "2026-09-22"}
 

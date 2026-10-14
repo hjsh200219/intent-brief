@@ -67,6 +67,7 @@ def new_state(case_dir, brief_type, params):
         "attachments": _attachments(case_dir),
         "side": None,
         "claim_amount": None,
+        "claim_interest": None,
         "issues": [],
         "intent": {"primary": None, "secondaries": None, "success_sentence": None, "concession": None, "fast_path": False},
         "procedure": {"brief_type": brief_type, "due_date": None, "next_hearing": None},
@@ -164,7 +165,7 @@ def _apply(st, upd, params):
             st[k].update(v)
         elif k == "overrides":
             st["overrides"].extend(v)
-        elif k in ("side", "claim_amount", "round0_done", "contrarian_done", "intent_retry_done",
+        elif k in ("side", "claim_amount", "claim_interest", "round0_done", "contrarian_done", "intent_retry_done",
                    "threshold", "threshold_source", "design_confirm_count"):
             st[k] = v
         else:

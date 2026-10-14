@@ -1,0 +1,69 @@
+{
+ "procedure": {
+  "procedure": {}
+ },
+ "contrarian": {
+  "_answer": "재판부가 조정 없이 바로 판결로 가거나 상대가 새 증거를 내는 경우"
+ },
+ "design_confirm": {
+  "_answer": "확정"
+ },
+ "round0": {
+  "side": "원고",
+  "claim_amount": 50000000,
+  "issues": [
+   {
+    "id": 1,
+    "title": "금전소비대차의 성립"
+   },
+   {
+    "id": 2,
+    "title": "변제 항변"
+   }
+  ],
+  "procedure": {
+   "due_date": "2026-10-13",
+   "next_hearing": "2026-09-22"
+  },
+  "_quote": "의뢰인: 홍길동(원고) / 청구취지 요지: 대여금 5,000만원",
+  "claim_interest": true
+ },
+ "intent": {
+  "intent": {
+   "primary": "W",
+   "secondaries": [],
+   "success_sentence": "다음 기일에 재판부가 증여 주장을 배척하고 변론을 종결한다"
+  }
+ },
+ "issue|1": {
+  "issues": [
+   {
+    "id": 1,
+    "stance": "다툼",
+    "evidence": {
+     "mode": "제출",
+     "items": [
+      "갑 제1호증",
+      "갑 제2호증"
+     ]
+    }
+   }
+  ],
+  "_quote": "쟁점 1. 금전소비대차의 성립"
+ },
+ "issue|2": {
+  "issues": [
+   {
+    "id": 2,
+    "stance": "다툼",
+    "evidence": {
+     "mode": "제출 요구",
+     "targets": [
+      "피고가 주장하는 1,000만원 현금 변제의 출금·수령 증빙"
+     ]
+    }
+   }
+  ],
+  "_quote": "쟁점 2. 변제 항변"
+ }
+}

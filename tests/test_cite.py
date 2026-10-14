@@ -281,3 +281,29 @@ def test_run_end_to_end_with_fake(tmp_path, fake_server, monkeypatch):
     assert out["complete"] and out["summary"] == {"confirmed": 1}
     assert (d / "cite_results.json").exists()
     assert os.listdir(d / "cite")
+
+
+def test_law_alias_parenthesis(tmp_path):
+    """「소송촉진 등에 관한 특례법 (소송촉진법)」처럼 약칭 괄호가 붙어도 정확 일치(e2e 에서 오탐으로 드러남)."""
+    search = ("## 법령 검색 결과\n\n총 3건 (1페이지)\n\n1. [288353] 소송촉진 등에 관한 특례규칙\n"
+              "2. [286417] 소송촉진 등에 관한 특례법 (소송촉진법)\n3. [208701] 소송촉진 등에 관한 특례법 제3조제1항 본문의 법정이율에 관한 규정\n")
+    art = "### 제3조 (법정이율)\n\n제3조(법정이율) ①금전채무의 전부 또는 일부의 이행을 명하는 판결…"
+    table = [({"action": "search_laws"}, search), ({"action": "get_law_article_sub", "law_id": 286417, "article": "000300"}, art)]
+    r = chk(tmp_path, table).check({"kind": "law", "law": "소송촉진 등에 관한 특례법", "article": 3, "sub": 0})
+    assert r["status"] == "confirmed" and r["law_id"] == 286417
+
+
+def test_unverified_reports_cited_by(tmp_path):
+    """원문은 없고 그 번호를 인용한 다른 판결만 있을 때 — 미확인이되 인용 건수를 알려 준다."""
+    page = _page(5, ["2021나10058", "2021가합10042", "2020나26340", "2019가1", "2018가2"])
+    table = [({"action": "search_cases", "date_from": "20140710"}, "\"2014다26187\" 판례 검색 결과가 없습니다."),
+             ({"action": "search_cases"}, page)]
+    r = chk(tmp_path, table).check({"kind": "case", "number": "2014다26187", "court": "대법원", "date": "20140710"})
+    assert r["status"] == "unverified" and r["cited_by"] == 5 and "인용한 다른 판결 5건" in r["detail"]
+
+
+def test_date_wrong_but_number_exists(tmp_path):
+    page = _page(1, ["2016다225353"])
+    table = [({"action": "search_cases", "date_from": "20170222"}, "검색 결과가 없습니다."), ({"action": "search_cases"}, page)]
+    r = chk(tmp_path, table).check({"kind": "case", "number": "2016다225353", "court": "대법원", "date": "20170222"})
+    assert r["status"] == "unverified" and "선고일 불일치" in r["detail"]

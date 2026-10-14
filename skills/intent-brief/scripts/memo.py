@@ -132,6 +132,7 @@ def read_case(case_dir):
         "basic": basic,
         "side_guess": side_from_client(client),
         "claim_amount_guess": P.parse_won(claim_line),
+        "claim_interest_guess": "지연손해금" in claim_line or "이자" in claim_line,
         "issues": parse_issues(md),
         "schedule": parse_schedule(md),
         "newline": "CRLF" if "\r\n" in md else "LF",

@@ -75,13 +75,13 @@ def test_m_plaintiff_deduct(params):
 def test_m_plaintiff_scope_only(params):
     issues = [{"id": 1, "title": "성립", "stance": "다툼"}, {"id": 2, "title": "변제", "stance": "일부 인정", "scope": "현금 변제분"}]
     d = I.resolve(st_for(primary="M", issues=issues), params)
-    assert "인정한 부분([확인 필요: 인정액])을 공제한 나머지를 인용" in d["conclusion"]["text"]
+    assert "인정한 부분([확인 필요: 인정액])을 공제한 나머지 금액을 인용" in d["conclusion"]["text"]
     assert "[확인 필요: 인정액]" in d["todo"][0]["text"]
 
 
 def test_m_plaintiff_no_claim_amount(params):
     d = I.resolve(st_for(primary="M", issues=ADMIT2, claim=None), params)
-    assert "나머지([확인 필요: 청구금액])" in d["conclusion"]["text"]
+    assert "나머지 금액([확인 필요: 청구금액])을 인용" in d["conclusion"]["text"]
     assert "[확인 필요: 청구금액]" in d["todo"][0]["text"]
     d2 = I.resolve(st_for(primary="W", claim=None), params)
     assert "[확인 필요: 청구금액] 전부" in d2["conclusion"]["text"]
@@ -264,3 +264,16 @@ def test_write_design_and_status(home, case, params):
     assert I.main(["resolve", path, "--write"]) == 0
     st = P.load_json(path)
     assert st["status"] == "designed" and st["design_path"].endswith("준비서면_design.json")
+
+
+@pytest.mark.parametrize("issues,primary,want", [
+    (None, "W", "원고의 청구금액 5,000만원 및 이에 대한 지연손해금 전부를 인용"),
+    (ADMIT2, "M", "인정한 1,000만원을 공제한 나머지 4,000만원 및 이에 대한 지연손해금을 인용"),
+    ([{"id": 1, "title": "x", "stance": "일부 인정", "scope": "현금분"}], "M", "공제한 나머지 금액 및 이에 대한 지연손해금을 인용"),
+])
+def test_claim_interest(params, issues, primary, want):
+    """VM 대화 시험에서 드러난 공백 — 지연손해금 청구면 결론에 함께 적는다."""
+    d = I.resolve(st_for(primary=primary, issues=issues, claim_interest=True), params)
+    assert want in d["conclusion"]["text"] and d["claim_interest"] is True
+    d2 = I.resolve(st_for(primary=primary, issues=issues), params)
+    assert "지연손해금" not in d2["conclusion"]["text"]

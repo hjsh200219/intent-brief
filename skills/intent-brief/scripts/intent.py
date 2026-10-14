@@ -75,20 +75,21 @@ def relief_plaintiff(st, params):
     """원고 쪽 인용 문구(§2.2-5 표). 반환 (문구, 메모)."""
     R = params["relief"]
     claim = st.get("claim_amount")
+    interest = R["interest"] if st.get("claim_interest") else ""
     adm = _admitted(st)
     if not adm:
-        return R["plaintiff_full"].format(claim=P.fmt_won(claim) if claim else params["tag"]["claim_amount_missing"]), "full"
+        return R["plaintiff_full"].format(claim=P.fmt_won(claim) if claim else params["tag"]["claim_amount_missing"], interest=interest), "full"
     if any(i.get("amount") is None for i in adm):
-        return R["plaintiff_deduct_scope"], "scope"
+        return R["plaintiff_deduct_scope"].format(interest=interest), "scope"
     total = sum(i["amount"] for i in adm)
     if claim is None:
-        return R["plaintiff_deduct_noclaim"].format(admitted=P.fmt_won(total)), "noclaim"
+        return R["plaintiff_deduct_noclaim"].format(admitted=P.fmt_won(total), interest=interest), "noclaim"
     remaining = claim - total
     if remaining <= 0:
         raise NeedInput([{"key": "design.amounts", "round_type": "design_confirm",
                           "why": "인정액 합계(%s)가 청구금액(%s) 이상입니다 — 인정액이나 청구금액을 고쳐 주십시오"
                                  % (P.fmt_won(total), P.fmt_won(claim))}])
-    return R["plaintiff_deduct"].format(admitted=P.fmt_won(total), remaining=P.fmt_won(remaining)), "deduct"
+    return R["plaintiff_deduct"].format(admitted=P.fmt_won(total), remaining=P.fmt_won(remaining), interest=interest), "deduct"
 
 
 def _remaining_text(st, params):
@@ -213,6 +214,7 @@ def resolve(st, params=None, phrases=None):
         "success_sentence": st["intent"].get("success_sentence"),
         "concession": st["intent"].get("concession"),
         "claim_amount": st.get("claim_amount"),
+        "claim_interest": bool(st.get("claim_interest")),
         "strength": {"level": strength, "desc": params["strength_levels"].get(strength, ""), "source": sources["strength"]},
         "tone": {"value": base["tone"], "source": "default"},
         "length": {"label": base["length"], "chars": base["length_chars"], "source": "default"},
