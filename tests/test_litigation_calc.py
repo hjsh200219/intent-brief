@@ -72,8 +72,8 @@ def test_civil_from_midnight_counts_first_day():
 def test_extra_holiday_and_out_of_table_warning():
     r = D.compute("2026-10-15", preset="민사-항소", extra_holidays=["2026-10-29"])
     assert r["expires"] == "2026-10-30" and r["shifted"][0]["reason"] == "추가 공휴일"
-    far = D.compute("2027-12-25", preset="민사-항소")
-    assert far["expires"] == "2028-01-10" and any("공휴일 표 범위 밖" in w and "2028" in w for w in far["warnings"])
+    far = D.compute("2028-12-25", preset="민사-항소")
+    assert far["expires"] == "2029-01-08" and any("공휴일 표 범위 밖" in w and "2029" in w for w in far["warnings"])
     assert D.compute("2026-10-15", preset="민사-항소")["warnings"] == []
 
 
@@ -173,8 +173,9 @@ def test_stdlib_only_and_py39(name):
 
 def test_holiday_table_shape():
     h = json.load(open(os.path.join(ROOT, "skills", "litigation-calc", "references", "holidays.json"), encoding="utf-8"))
-    assert h["years"] == [2024, 2027] and h["source"]
-    assert all(date.fromisoformat(k).year in range(2024, 2028) for k in h["holidays"])
+    assert h["years"] == [2024, 2028] and h["source"]
+    assert all(date.fromisoformat(k).year in range(2024, 2029) for k in h["holidays"])
+    assert h["holidays"]["2028-10-05"] == "대체공휴일(추석)"
     assert h["holidays"]["2026-05-01"] == "노동절"
 
 
