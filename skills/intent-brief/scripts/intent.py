@@ -195,6 +195,12 @@ def resolve(st, params=None, phrases=None):
         todo.insert(0, {"key": "claim_reduction_optional",
                         "text": phrases["tag"]["claim_reduction_optional"].format(remaining=_remaining_text(st, params))})
 
+    # 의도 유불리 검토에서 「놓치는 것」으로 본 항목 — 변호사가 진행을 골랐어도 할 일로 남긴다
+    review = st.get("intent_review")
+    if review and P.review_current(st):
+        for item in review.get("forgoes") or []:
+            todo.append({"key": "intent_review_forgone", "text": phrases["tag"]["intent_review_forgone"].format(item=item)})
+
     # 쟁점 태도 — 답이 없으면 기본값
     issues = []
     for it in st["issues"]:
@@ -228,6 +234,8 @@ def resolve(st, params=None, phrases=None):
         "client_report": "C" in secs,
         "relief_kind": relief_kind,
         "withheld_evidence": st["conflict_answers"].get("withheld_evidence") or st["flags"].get("withheld_evidence"),
+        "instance": st.get("instance"),
+        "intent_review": review,
     }
 
     # 설계 확인 덮어쓰기 — 바꾼 값은 source: override
@@ -328,6 +336,9 @@ def main(argv=None):
             design = resolve(st)
             out = {"ok": True, "design": design}
             if a.write:
+                if not P.review_current(st):
+                    raise NeedInput([{"key": "intent_review", "round_type": "intent_review",
+                                      "why": "지금 의도에 대한 유불리 검토(「진행」 결정)가 없어 설계를 확정할 수 없습니다"}])
                 import state as S
                 path = write_design(a.state, st, design)
                 st["design_path"] = path

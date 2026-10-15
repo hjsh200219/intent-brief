@@ -29,7 +29,11 @@ TRANSITIONS = {
     "recorded": {"drafted", "confirming"},
     "stopped": {"interviewing"},
 }
-ROUND_TYPES = ["round0", "intent", "issue", "procedure", "contrarian", "conflict", "design_confirm"]
+ROUND_TYPES = ["round0", "intent", "intent_review", "issue", "procedure", "contrarian", "conflict", "design_confirm"]
+INSTANCES = ["1심", "항소심"]
+REVIEW_VERDICTS = ["유리", "조건부", "불리"]
+REVIEW_DECISIONS = ["진행", "변경"]
+REVIEW_LISTS = ("gains", "forgoes", "alternatives")
 EVIDENCE_MODES = ["제출", "유보", "제출 요구"]
 
 
@@ -66,6 +70,7 @@ def new_state(case_dir, brief_type, params):
         "memo": {"path": P.nfc(memo) if memo else None, "sha256": P.sha256_file(memo) if memo else None},
         "attachments": _attachments(case_dir),
         "side": None,
+        "instance": None,
         "claim_amount": None,
         "claim_interest": None,
         "issues": [],
@@ -74,6 +79,7 @@ def new_state(case_dir, brief_type, params):
         "flags": {"settle_will": None, "doc_targets": [], "alt_cause": None, "reduction_reasons": [],
                   "procedural_issue": None, "withheld_evidence": None},
         "conflict_answers": {},
+        "intent_review": None,
         "rounds": [],
         "round0_done": False,
         "contrarian_done": False,
@@ -142,6 +148,17 @@ def validate_fields(st, params):
         raise P.BriefError("side 는 원고·피고 중 하나입니다")
     if st.get("claim_amount") is not None and not isinstance(st["claim_amount"], int):
         raise P.BriefError("claim_amount 는 원 단위 정수여야 합니다")
+    if st.get("instance") not in (None,) + tuple(INSTANCES):
+        raise P.BriefError("instance(심급)는 %s 중 하나입니다" % "·".join(INSTANCES))
+    rv = st.get("intent_review")
+    if rv is not None:
+        if rv.get("verdict") not in REVIEW_VERDICTS:
+            raise P.BriefError("intent_review.verdict 는 %s 중 하나입니다" % "·".join(REVIEW_VERDICTS))
+        if rv.get("decision") not in REVIEW_DECISIONS:
+            raise P.BriefError("intent_review.decision 은 %s 중 하나입니다" % "·".join(REVIEW_DECISIONS))
+        for k in REVIEW_LISTS:
+            if not isinstance(rv.get(k, []), list):
+                raise P.BriefError("intent_review.%s 는 목록이어야 합니다" % k)
 
 
 def apply_update(st, upd, params):
@@ -165,11 +182,15 @@ def _apply(st, upd, params):
             st[k].update(v)
         elif k == "overrides":
             st["overrides"].extend(v)
-        elif k in ("side", "claim_amount", "claim_interest", "round0_done", "contrarian_done", "intent_retry_done",
+        elif k == "intent_review" and isinstance(v, dict):
+            st["intent_review"] = dict(v)  # 검토는 통째로 바꾼다 — 옛 판단이 섞이지 않게
+        elif k in ("side", "instance", "claim_amount", "claim_interest", "round0_done", "contrarian_done", "intent_retry_done",
                    "threshold", "threshold_source", "design_confirm_count"):
             st[k] = v
         else:
             raise P.BriefError("알 수 없는 필드: %s" % k)
+    if "intent_review" in upd and st.get("intent_review") is not None:
+        st["intent_review"]["for"] = P.intent_signature(st["intent"])  # 같은 apply 의 의도 변경까지 반영한 뒤 서명
     validate_fields(st, params)
     if rnd is not None:
         rt = rnd.get("round_type")

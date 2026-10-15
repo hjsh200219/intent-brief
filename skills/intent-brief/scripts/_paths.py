@@ -165,6 +165,17 @@ def parse_won(text):
     return int(round(num * unit))
 
 
+def intent_signature(intent):
+    """의도 유불리 검토가 어떤 선택에 대한 것인지 — 주 의도|부 의도(순서 유지)."""
+    return "%s|%s" % (intent.get("primary") or "", ",".join(intent.get("secondaries") or []))
+
+
+def review_current(st):
+    """지금 의도에 대해 유불리 검토를 마치고 변호사가 「진행」을 골랐는가."""
+    r = st.get("intent_review") or {}
+    return r.get("decision") == "진행" and r.get("for") == intent_signature(st["intent"])
+
+
 def emit(obj, code=0):
     """결과 JSON 을 UTF-8 바이트로 표준출력에 — Windows 콘솔 코드페이지(cp949)에서 인코딩 오류가 나지 않게
     텍스트 계층을 거치지 않는다."""

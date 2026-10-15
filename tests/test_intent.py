@@ -256,6 +256,7 @@ def test_write_design_and_status(home, case, params):
     st = P.load_json(path)
     st["intent"].update(primary="W", secondaries=[], success_sentence="s")
     st["issues"] = [{"id": 1, "title": "a", "stance": "다툼"}, {"id": 2, "title": "b", "stance": "다툼"}]
+    review_for(st)
     S.save(path, st)
     assert I.main(["resolve", path, "--write"]) == 2  # interviewing → designed 직행 금지
     st = P.load_json(path)
@@ -277,3 +278,43 @@ def test_claim_interest(params, issues, primary, want):
     assert want in d["conclusion"]["text"] and d["claim_interest"] is True
     d2 = I.resolve(st_for(primary=primary, issues=issues), params)
     assert "지연손해금" not in d2["conclusion"]["text"]
+
+
+def review_for(st, decision="진행", forgoes=("항소심 청구취지 확장",)):
+    st["intent_review"] = {"for": P.intent_signature(st["intent"]), "verdict": "불리", "gains": ["빠른 종결"],
+                           "forgoes": list(forgoes), "alternatives": ["확장하되 쟁점 압축"], "decision": decision}
+    return st
+
+
+def test_design_carries_review_and_forgone_todo(params):
+    st = review_for(st_for(primary="S", flags={"settle_will": True}))
+    d = I.resolve(st, params)
+    assert d["intent_review"]["verdict"] == "불리"
+    assert any(t["key"] == "intent_review_forgone" and "항소심 청구취지 확장" in t["text"] for t in d["todo"])
+
+
+def test_design_review_without_forgoes_no_todo(params):
+    st = review_for(st_for(), forgoes=())
+    assert not any(t["key"] == "intent_review_forgone" for t in I.resolve(st, params)["todo"])
+
+
+def test_write_requires_current_review(home, case, params):
+    c = case(F1)
+    path, st = __import__("conftest").make_state(c, **F1_BASE)
+    st = P.load_json(path)
+    st["intent"].update(primary="W", secondaries=[], success_sentence="s")
+    st["issues"] = [{"id": 1, "title": "a", "stance": "다툼"}, {"id": 2, "title": "b", "stance": "다툼"}]
+    S.set_status(st, "confirming")
+    S.save(path, st)
+    assert I.main(["resolve", path]) == 0  # 미리보기는 검토 전에도 된다
+    assert I.main(["resolve", path, "--write"]) == 3  # 확정은 검토가 끝나야
+    review_for(st, decision="변경")
+    S.save(path, st)
+    assert I.main(["resolve", path, "--write"]) == 3
+    review_for(st)
+    st["intent"]["primary"] = "A"  # 검토 뒤 의도가 바뀌면 다시 검토
+    S.save(path, st)
+    assert I.main(["resolve", path, "--write"]) == 3
+    review_for(st)
+    S.save(path, st)
+    assert I.main(["resolve", path, "--write"]) == 0

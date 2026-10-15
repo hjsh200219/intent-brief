@@ -64,5 +64,17 @@
    }
   ],
   "_quote": "쟁점 2. 변제 항변"
+ },
+ "intent_review": {
+  "intent_review": {
+   "verdict": "유리",
+   "gains": [
+    "재생: 고른 의도 유지"
+   ],
+   "forgoes": [],
+   "alternatives": [],
+   "decision": "진행"
+  },
+  "_answer": "1) 그대로 진행"
  }
 }

@@ -55,6 +55,18 @@ def score_procedure(st):
     return 1.0 if n == 3 else (0.5 if n == 2 else 0.0)
 
 
+intent_signature = P.intent_signature
+
+
+def _review_due(st, sc):
+    """주 의도가 정해졌는데(ax_intent 통과) 지금 의도에 대한 유불리 검토가 끝나지 않았다."""
+    return sc["axes"]["ax_intent"] >= INTENT_PASS and not P.review_current(st)
+
+
+REVIEW_Q = {"round_type": "intent_review", "issue_id": None, "axis": "ax_intent",
+            "why": "고른 의도가 소송 전체에서 유리한지 먼저 보고 그대로 갈지 정합니다"}
+
+
 def cap_for(st):
     return min(10, 6 + max(0, len(st["issues"]) - 3))
 
@@ -83,6 +95,8 @@ def next_question(st, sc=None):
     sc = sc or compute(st)
     if not st.get("round0_done"):
         return {"round_type": "round0", "issue_id": None, "axis": None, "why": "서면 종류·당사자 지위·쟁점·기한을 먼저 확인합니다"}
+    if _review_due(st, sc) and st["status"] in ("interviewing", "confirming"):
+        return dict(REVIEW_Q)
     if st["intent"].get("fast_path") and st.get("design_confirm_count", 0) == 0:
         return {"round_type": "design_confirm", "issue_id": None, "axis": None, "fast": True,
                 "why": "빠른 경로 — 설계 확인 표 하나로 의도·쟁점 태도를 함께 정합니다"}

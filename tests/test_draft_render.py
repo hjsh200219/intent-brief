@@ -104,6 +104,9 @@ def rendered(home, case, params):
     st["intent"].update(primary="S", secondaries=["M", "C"], success_sentence="s", concession="4,000만원")
     st["issues"] = [dict(i) for i in ADMIT2]
     st["flags"]["settle_will"] = True
+    st["intent_review"] = {"for": P.intent_signature(st["intent"]), "verdict": "조건부", "gains": ["조기 종결"],
+                           "forgoes": ["항소심 청구취지 확장"], "alternatives": ["확장 신청 후 조정"], "decision": "진행",
+                           "note": "의뢰인이 신속 종결 원함"}
     d = I.resolve(st, params)
     wd = os.path.dirname(path)
     st["design_path"] = os.path.join(wd, "준비서면_design.json")
@@ -147,6 +150,7 @@ def test_docx_format_python_docx(rendered):
     t = docx.Document(out["paths"]["table"])
     alltext = "\n".join(p.text for p in t.paragraphs) + "\n".join(c.text for tb in t.tables for row in tb.rows for c in row.cells)
     assert "내부용" in alltext and "S" in alltext and "2016다225353" in alltext and "적합성" in alltext
+    assert "의도 유불리 검토" in alltext and "조건부" in alltext and "항소심 청구취지 확장" in alltext and "진행" in alltext
 
 
 def test_ooxml_structure(rendered):

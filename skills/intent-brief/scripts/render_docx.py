@@ -204,6 +204,16 @@ def table_body(st, design, cite, draft_md):
         design["side"], design["brief_type"])))
     if design.get("success_sentence"):
         o.append(para("성공 판정 문장: " + design["success_sentence"]))
+    rv = design.get("intent_review")
+    if rv:
+        o.append(para("0. 의도 유불리 검토 (소송 전체 기준)", "Heading1"))
+        o.append(table([["항목", "내용"],
+                        ["판정", rv.get("verdict") or ""],
+                        ["얻는 것", "\n".join(rv.get("gains") or []) or "없음"],
+                        ["놓치는 것", "\n".join(rv.get("forgoes") or []) or "없음"],
+                        ["대안", "\n".join(rv.get("alternatives") or []) or "없음"],
+                        ["변호사 결정", "%s%s" % (rv.get("decision") or "", (" — " + rv["note"]) if rv.get("note") else "")]],
+                       [1800, 7555]))
     o.append(para("1. 파라미터와 값 출처", "Heading1"))
     o.append(table([["파라미터", "값", "출처"],
                     ["강도", "%s — %s" % (design["strength"]["level"], design["strength"]["desc"]), design["strength"]["source"]],

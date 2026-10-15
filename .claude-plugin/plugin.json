@@ -1,6 +1,6 @@
 {
   "name": "intent-brief",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "변호사가 서면의 의도(전부 승소·손해 최소화·조정 유도·입장 고정·쟁점 재구성·상소 대비)를 고르면 인터뷰로 의도를 고정하고 그 의도에 맞춘 민사 준비서면·답변서 초안(.docx)과 내부용 의도대응표를 만드는 플러그인. 조문·판례 인용은 법제처 원문과 정확 일치로 대조한다. AI는 실수할 수 있으며 최종 검토와 제출 판단은 사용 변호사의 책임입니다. | Intent-driven Korean civil brief drafting for attorneys. AI can make mistakes; the attorney is responsible for final review.",
   "author": {
     "name": "hoshin",

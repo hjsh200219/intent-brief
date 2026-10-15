@@ -284,3 +284,24 @@ def test_casedb_contract(tmp_path, monkeypatch, newline):
         ours = M.build(text, ["준비서면 의도  확정 — 주: S"], ["(선택) 청구취지를 4,000만원으로   감축"], "2026-09-15")
         assert ours.encode("utf-8") == theirs, variant
     assert _tree_hash(DEMO) == demo_hash  # 원본 데모 트리(__pycache__ 포함) 불변
+
+
+def test_intent_review_apply(home, case, params):
+    import score as SC
+    c = case(F1)
+    path, st = make_state(c, **F1_BASE)
+    st = P.load_json(path)
+    S.apply_update(st, {"intent": {"primary": "S", "secondaries": [], "success_sentence": "s", "concession": "1"}}, params)
+    rnd = {"round_type": "intent_review", "question": "q", "answer": "1"}
+    S.apply_update(st, {"instance": "항소심",
+                        "intent_review": {"verdict": "불리", "gains": ["빠른 종결"], "forgoes": ["청구취지 확장"],
+                                          "alternatives": ["확장 후 쟁점 압축"], "decision": "진행"},
+                        "round": rnd}, params)
+    assert st["intent_review"]["for"] == SC.intent_signature(st["intent"])  # 스크립트가 붙인다
+    assert st["rounds"][-1]["round_type"] == "intent_review" and st["instance"] == "항소심"
+    for bad in ({"verdict": "몰라", "decision": "진행"}, {"verdict": "유리", "decision": "글쎄"}, {"verdict": "유리"},
+                {"verdict": "유리", "decision": "진행", "forgoes": "문자열"}):
+        with pytest.raises(P.BriefError):
+            S.apply_update(st, {"intent_review": bad, "round": rnd}, params)
+    with pytest.raises(P.BriefError):
+        S.apply_update(st, {"instance": "3심"}, params)

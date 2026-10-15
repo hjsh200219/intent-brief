@@ -74,6 +74,7 @@ def test_contrarian_after_three():
     st = blank()
     st["intent"].update(primary="W", secondaries=[], success_sentence="s")
     st["rounds"] = [{"round_type": "intent"}, {"round_type": "issue"}, {"round_type": "issue"}]
+    reviewed(st)
     assert SC.next_question(st)["round_type"] == "contrarian"
 
 
@@ -93,6 +94,7 @@ def test_pass_goes_to_design_confirm_then_done():
     for i in st["issues"]:
         i.update(stance="다툼", evidence={"mode": "유보"})
     st["procedure"].update(due_date="x", next_hearing="y")
+    reviewed(st)
     assert SC.next_question(st)["round_type"] == "design_confirm"
     st["status"] = "designed"
     assert SC.next_question(st)["round_type"] == "done"
@@ -109,5 +111,78 @@ def test_weakest_issue_chosen():
     st["intent"].update(primary="W", secondaries=[], success_sentence="s")
     st["issues"][0].update(stance="다툼", evidence={"mode": "유보"})
     st["issues"][1].update(stance="다툼")
+    reviewed(st)
     n = SC.next_question(st)
     assert (n["round_type"], n["issue_id"], n["axis"]) == ("issue", 2, "ax_evidence")
+
+
+# ── 의도 유불리 검토 (intent_review) ─────────────────────────
+def reviewed(st, decision="진행"):
+    st["intent_review"] = {"for": SC.intent_signature(st["intent"]), "verdict": "조건부",
+                           "gains": ["g"], "forgoes": ["f"], "alternatives": [], "decision": decision}
+    return st
+
+
+def full(st):
+    st["intent"].update(primary="W", secondaries=[], success_sentence="s")
+    for i in st["issues"]:
+        i.update(stance="다툼", evidence={"mode": "유보"})
+    st["procedure"].update(due_date="x", next_hearing="y")
+    return st
+
+
+def test_review_fires_right_after_intent_fixed():
+    st = blank()
+    st["intent"].update(primary="W", secondaries=[], success_sentence="s")
+    n = SC.next_question(st)
+    assert n["round_type"] == "intent_review"
+    reviewed(st)
+    assert SC.next_question(st)["round_type"] == "issue"
+
+
+def test_review_not_before_intent():
+    st = blank()
+    st["intent"]["primary"] = "W"  # 부 의도·성공 문장 없음 → ax_intent 0.5
+    assert SC.next_question(st)["round_type"] != "intent_review"
+
+
+def test_review_before_design_confirm_and_once():
+    st = full(blank())
+    assert SC.next_question(st)["round_type"] == "intent_review"
+    reviewed(st)
+    assert SC.next_question(st)["round_type"] == "design_confirm"
+
+
+def test_review_again_when_intent_changed():
+    st = reviewed(full(blank()))
+    st["intent"]["primary"] = "S"
+    st["intent"]["concession"] = "1,000만원"
+    assert SC.next_question(st)["round_type"] == "intent_review"
+
+
+def test_review_decision_change_is_not_done():
+    st = reviewed(full(blank()), decision="변경")
+    assert SC.next_question(st)["round_type"] == "intent_review"
+
+
+def test_review_on_cap_early_exit():
+    st = blank()
+    st["intent"].update(primary="W", secondaries=[], success_sentence="s")
+    st["rounds"] = [{"round_type": "issue"}] * SC.cap_for(st)
+    st["contrarian_done"] = True
+    assert SC.next_question(st)["round_type"] == "intent_review"
+    reviewed(st)
+    assert SC.next_question(st)["round_type"] == "design_confirm"
+
+
+def test_review_on_fast_path():
+    st = blank()
+    st["intent"]["fast_path"] = True
+    assert SC.next_question(st)["round_type"] == "design_confirm"  # 의도가 없으면 표에서 먼저 정한다
+    st["intent"].update(primary="W", secondaries=[], success_sentence="s")
+    assert SC.next_question(st)["round_type"] == "intent_review"
+    st["design_confirm_count"] = 1
+    st["status"] = "confirming"
+    full(st)
+    reviewed(st)
+    assert SC.next_question(st)["round_type"] == "design_confirm"

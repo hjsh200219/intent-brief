@@ -11,6 +11,7 @@
 
 - 모호도 = 1 − Σ(가중치 × 점수). 통과 = 모호도 ≤ 0.20 그리고 ax_intent ≥ 0.80.
 - 통과 판정은 정보 충분성만 본다. 어떤 의도를 골라도 통과할 수 있다.
-- 상한(상한 안 라운드 수) = 6 + max(0, 쟁점 수 − 3), 최대 10. round0·conflict·design_confirm 은 상한 밖.
+- 상한(상한 안 라운드 수) = 6 + max(0, 쟁점 수 − 3), 최대 10. round0·intent_review·conflict·design_confirm 은 상한 밖.
+- 의도 유불리 검토(intent_review): ax_intent ≥ 0.80 이 되면 다른 질문보다 먼저 한 번. 지금 의도(주|부)에 대해 「진행」 결정이 있어야 끝난다 — 의도가 바뀌면 다시 묻는다. 설계 확정(`resolve --write`)도 이것을 요구한다. 모호도 점수에는 들어가지 않는다.
 - 준비도 rd_law(보고만) = 근거 조문·판례 후보가 1개 이상인 쟁점 비율.
-- 라운드 종류: round0 · intent · issue(쟁점 1개의 태도+증거) · procedure · contrarian(3라운드 이후 1회) · conflict(최대 2) · design_confirm(1회 + 수정 1회).
+- 라운드 종류: round0 · intent · intent_review(의도마다 1회) · issue(쟁점 1개의 태도+증거) · procedure · contrarian(3라운드 이후 1회) · conflict(최대 2) · design_confirm(1회 + 수정 1회).
