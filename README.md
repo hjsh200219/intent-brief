@@ -57,13 +57,18 @@ Claude Code 2.1.275 이상이면 한 줄로도 됩니다: `/plugin install lawfi
 
 ## 옛 플러그인에서 옮기기
 
-| 쓰던 플러그인 | 할 일 |
-|---|---|
-| `lyn-lawfirm` | 마켓플레이스를 업데이트하면 「Renamed to lawfirm」 안내가 뜹니다. `/plugin install lawfirm@lyn-lawfirm` 한 번이면 이어서 씁니다. 처음부터 새로 받으려면 `/plugin uninstall lyn-lawfirm@lyn-lawfirm` → 위 「설치」. 옛 k-data MCP 법령 검색은 없어지고 법제처 직접 조회(본인 OC 키)로 바뀝니다. |
-| `case-search` | 마켓플레이스를 업데이트하면 「Renamed to lawfirm」 안내가 뜹니다. `/plugin install lawfirm@case-search` 한 번이면 이어서 씁니다. 빅케이스 자격증명(키체인 `case-search-bigcase`, `~/.case-search/`)은 그대로 쓰므로 다시 등록하지 않아도 됩니다. 설정 명령은 `/case-search:setup` → `/lawfirm:case-search-setup` 으로 바뀌었습니다. |
-| `intent-brief` | 마켓플레이스를 업데이트하면 `/plugin install lawfirm@intent-brief` 한 번이면 이어서 씁니다(옛 주소 `hjsh200219/intent-brief` 는 이 저장소로 연결됩니다). 작업 폴더(`~/.intent-brief/`)와 법제처 키는 그대로 씁니다. |
+옛 저장소(`hjsh200219/lyn-lawfirm`·`hjsh200219/case-search`)는 이전 안내만 남기고 보관(archive)했습니다. 이미 설치하신 분은 두 단계면 됩니다.
 
-옛 플러그인과 lawfirm 을 함께 켜 두면 같은 스킬이 두 번 보이니 옛 것은 지우십시오.
+1. `/plugin` → Marketplaces → 쓰던 마켓플레이스(`lyn-lawfirm`·`case-search`·`intent-brief`) → **Update marketplace**
+2. `/plugin install lawfirm@<그 마켓플레이스 이름>` — 옛 플러그인이 lawfirm 으로 바뀝니다(2026-10-15 세 경로 모두 GitHub 에서 실측)
+
+| 쓰던 플러그인 | 이어지는 것 · 바뀌는 것 |
+|---|---|
+| `lyn-lawfirm` | 법률 문서 스킬 6종은 그대로 들어 있습니다. 옛 k-data MCP 법령 검색은 없어지고 법제처 직접 조회(본인 OC 키 — 처음 쓸 때 안내)로 바뀝니다. 옛 설치 명령 `install lyn-lawfirm@lyn-lawfirm` 은 이제 동작하지 않습니다. |
+| `case-search` | 빅케이스 자격증명(키체인 `case-search-bigcase`, `~/.case-search/`)을 그대로 쓰므로 다시 등록하지 않아도 됩니다. 설정 명령은 `/case-search:setup` → `/lawfirm:case-search-setup` 으로 바뀌었습니다. |
+| `intent-brief` | 옛 주소 `hjsh200219/intent-brief` 는 이 저장소로 연결됩니다. 작업 폴더(`~/.intent-brief/`)와 법제처 키를 그대로 씁니다. |
+
+옛 플러그인을 둘 이상 쓰셨다면 위 2단계를 한 번만 하고, 나머지 옛 플러그인은 `/plugin uninstall <이름>@<마켓플레이스>` 로 지우십시오 — lawfirm 이 두 번 설치되면 같은 스킬이 겹칩니다. 새로 시작하려면 옛 것을 모두 지우고 위 「설치」를 따르면 됩니다.
 
 ## 지원 범위 (0.4.0)
 
@@ -85,7 +90,7 @@ Claude Code 2.1.275 이상이면 한 줄로도 됩니다: `/plugin install lawfi
 
 **빅케이스 자동 연결**: `/lawfirm:case-search-setup` 으로 빅케이스에 로그인해 두면 민사 서면 인용 대조에도 따로 설정 없이 연결됩니다. 법제처에 원문이 없는 판례(예: 2014다26187)는 빅케이스에서 같은 사건번호를 한 번 찾아 「빅케이스 확인」으로 표시하고(「확인됨」과 구분), 쟁점 정리 때 판례 후보 검색에도 씁니다.
 
-**빅케이스 이용 범위**: 본인 빅케이스 계정으로, 사람이 화면에서 찾는 정도의 빈도로만 씁니다. 대량 수집·페이지 끝까지 넘기기·재배포는 하지 않습니다. 로그인하지 않으면 하급심 판결은 이유가 앞부분만 오고(`restricted`), 주석서 본문·양형 통계는 계정 권한이 없으면 403 이라 명령을 두지 않았습니다.
+**빅케이스 이용 범위**: 본인 빅케이스 계정으로, 사람이 화면에서 찾는 정도의 빈도로만 씁니다. 로그인 토큰은 `https://bigcase.ai` 로만 보내고 다른 주소로 가는 요청은 거부합니다. 대량 수집·페이지 끝까지 넘기기·재배포는 하지 않습니다. 로그인하지 않으면 하급심 판결은 이유가 앞부분만 오고(`restricted`), 주석서 본문·양형 통계는 계정 권한이 없으면 403 이라 명령을 두지 않았습니다.
 
 ## 개발
 
@@ -94,6 +99,12 @@ uv run --no-project --with pytest --with python-docx==1.2.0 pytest tests/
 uv run --no-project --with "scrapling[fetchers]>=0.4.11" --with keyring --with pytest --with python-docx==1.2.0 pytest tests/case_search -q
 ```
 민사 서면 런타임 스크립트(`skills/intent-brief/scripts/`)는 표준 라이브러리만 씁니다(테스트로 확인). 빅케이스 스크립트(`skills/case-search/scripts/bigcase.py`)는 uv inline 의존성(Scrapling·keyring)을 씁니다. API 형식 근거·실측 기록은 `docs/case-search/bigcase-api.md`. `dev/` 는 개발 전용입니다. 개발 지도·불변 조건은 [AGENTS.md](AGENTS.md).
+
+## 변경 이력
+
+- **0.4.0 (2026-10-15)** — 이름을 intent-brief 에서 lawfirm 으로 바꾸고 case-search(빅케이스 판례 검색)를 합쳤습니다. 옛 lyn-lawfirm·case-search·intent-brief 설치본은 마켓플레이스 업데이트로 옮겨 옵니다. 빅케이스 토큰을 bigcase.ai 밖으로 보내지 않게 막았고, 한국어 Windows 콘솔(cp949)에서 판례 조회 결과가 깨지던 문제를 고쳤습니다.
+- **0.3.0 (2026-10-15, 중간판 0.2.0 과 함께 공개)** — 의도 유불리 검토 라운드(0.2.0), 법제처 Open API 직접 호출(k-data MCP 폐지), 빅케이스 자동 연결, 법률 문서 스킬 6종 내장.
+- **0.1.0 (2026-10-14)** — 의도 기반 민사 준비서면·답변서 첫 공개.
 
 ## 라이선스
 
