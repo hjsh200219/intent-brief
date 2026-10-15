@@ -217,3 +217,19 @@ def test_similar_brief_decisions_requests(env):
     assert seen["decisions"] == {"query": "사기", "page": 1}
     assert s["results"][0]["snippet"] == "사기 요지"
     assert bc.decision("행정심판", "1")["filepath"] == "https://x/1.pdf"
+
+
+@pytest.mark.parametrize("url", ["https://evil.example/api", "http://bigcase.ai/api/v1/x", "https://bigcase.ai.evil.example/x"])
+def test_request_never_sends_token_off_host(env, url):
+    """Bearer 토큰은 https://bigcase.ai 로만 — 다른 호스트·평문 http 주소는 요청 전에 거부한다."""
+    bc = client({}, {"accessToken": jwt(time.time() + 3600)})
+    with pytest.raises(bigcase.BigcaseError):
+        bc.get(url)
+    assert bc.http.calls == []
+
+
+def test_decision_id_cannot_escape_path(env):
+    bc = client({("get", "/administrative-appeals/view/..%2F..%2Fauth%2Frenew"): Resp(200, {"id": 1})},
+                {"accessToken": jwt(time.time() + 3600)})
+    bc.decision("행정심판", "../../auth/renew")
+    assert bc.http.calls[-1][1] == "/administrative-appeals/view/..%2F..%2Fauth%2Frenew"

@@ -307,7 +307,7 @@ class Bigcase:
         return self.login()["accessToken"]
 
     def request(self, method: str, path: str, **kw):
-        url = path if path.startswith("http") else f"{API}/{path.lstrip('/')}"
+        url = _api_url(path)
         fn = getattr(self.http, method.lower())
         extra = kw.pop("headers", {})
         for attempt in range(2):
@@ -346,7 +346,17 @@ class Bigcase:
         return self.post(f"/{DECISION_KINDS[kind]}/searchList", json={"query": q, "page": page})
 
     def decision(self, kind: str, doc_id: str) -> dict:
-        return self.get(f"/{DECISION_KINDS[kind]}/view/{doc_id}")
+        return self.get(f"/{DECISION_KINDS[kind]}/view/{quote(str(doc_id), safe='')}")
+
+
+def _api_url(path: str) -> str:
+    """경로 → 빅케이스 API 주소. Bearer 토큰이 붙으므로 https://bigcase.ai 밖의 절대 주소는 거부한다."""
+    if "://" not in path:
+        return f"{API}/{path.lstrip('/')}"
+    u, api = urlparse(path), urlparse(API)
+    if (u.scheme, u.netloc) != (api.scheme, api.netloc):
+        raise BigcaseError(f"빅케이스({api.scheme}://{api.netloc}) 밖 주소에는 인증 요청을 보내지 않습니다: {u.scheme}://{u.netloc}")
+    return path
 
 
 def case_url(court: str | None, case_number: str | None) -> str | None:
