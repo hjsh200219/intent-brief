@@ -16,11 +16,13 @@ MCP 를 거치지 않는다. 표준 라이브러리만 쓴다.
   lawapi.py detail <target> <ID>
 """
 import argparse
+import getpass
 import http.client
 import json
 import os
 import re
 import socket
+import subprocess
 import sys
 import time
 import urllib.error
@@ -35,7 +37,51 @@ TIMEOUT = 20.0
 MIN_INTERVAL = 1.0  # 요청 간 최소 간격(초) — 짧으면 빈 응답(요청 제한)이 온다
 RETRIES = 2
 KEY_GUIDE = ("법제처 Open API 키(OC)가 필요합니다. https://open.law.go.kr 에서 회원가입 → OPEN API 사용 신청"
-             "(법령·판례) 후 받은 OC 값을 알려 주시면 저장합니다. 신청 때 이 PC 의 IP 주소 등록을 요구할 수 있습니다.")
+             "(법령·판례) 후 받은 OC 값을 `/lawfirm:law-key-setup` 의 입력 창에 넣으면 저장합니다(채팅에 적지 않습니다). "
+             "신청 때 이 PC 의 IP 주소 등록을 요구할 수 있습니다.")
+
+
+def _osascript_dialog(message, title, hidden):
+    esc = lambda s: s.replace("\\", "\\\\").replace('"', '\\"')
+    script = ('display dialog "%s" default answer "" %swith title "%s" '
+              'buttons {"취소", "확인"} default button "확인" cancel button "취소"\n'
+              "text returned of result") % (esc(message), "with hidden answer " if hidden else "", esc(title))
+    r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=600, check=False)
+    if r.returncode != 0:
+        raise P.BriefError("입력을 취소했습니다")
+    return r.stdout.rstrip("\n")
+
+
+def _windows_dialog(message, title, hidden):
+    msg, ttl = message.replace("'", "''"), title.replace("'", "''")
+    if hidden:
+        ps = ("[Console]::OutputEncoding=[Text.Encoding]::UTF8;"
+              "$c=Get-Credential -UserName '%s' -Message '%s';"
+              "if(-not $c){exit 1};[Console]::Out.Write($c.GetNetworkCredential().Password)") % (ttl, msg)
+    else:
+        ps = ("[Console]::OutputEncoding=[Text.Encoding]::UTF8;Add-Type -AssemblyName Microsoft.VisualBasic;"
+              "$v=[Microsoft.VisualBasic.Interaction]::InputBox('%s','%s');"
+              "if(-not $v){exit 1};[Console]::Out.Write($v)") % (msg, ttl)
+    r = subprocess.run(["powershell.exe", "-NoProfile", "-Command", ps], capture_output=True, timeout=600, check=False)
+    if r.returncode != 0:
+        raise P.BriefError("입력을 취소했습니다")
+    return r.stdout.decode("utf-8", "replace")
+
+
+def _ask(message, title, hidden):
+    """사람에게 값을 받는다 — 터미널이면 프롬프트, 아니면 OS 입력 창(macOS·Windows). 채팅·명령행 인자는 쓰지 않는다."""
+    if sys.stdin is not None and sys.stdin.isatty():
+        return getpass.getpass(message + ": ") if hidden else input(message + ": ")
+    if sys.platform == "darwin":
+        return _osascript_dialog(message, title, hidden)
+    if os.name == "nt":
+        return _windows_dialog(message, title, hidden)
+    raise P.BriefError("입력 창을 띄울 수 없습니다 — 자기 터미널에서 같은 명령을 직접 실행하십시오")
+
+
+def ask(message, title):
+    """법제처 키(OC)는 비밀번호가 아니라 가입 아이디라 보이게 받는다."""
+    return _ask(message, title, hidden=False)
 
 
 class NoKey(Exception):
@@ -305,7 +351,7 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
     k = sub.add_parser("key"); ks = k.add_subparsers(dest="kcmd", required=True)
     ks.add_parser("status")
-    s = ks.add_parser("set"); s.add_argument("oc", nargs="?"); s.add_argument("--stdin", action="store_true")
+    s = ks.add_parser("set"); s.add_argument("--prompt", action="store_true"); s.add_argument("--stdin", action="store_true")
     s.add_argument("--no-check", action="store_true")
     ks.add_parser("clear")
     s = sub.add_parser("law"); s.add_argument("name"); s.add_argument("--article")
@@ -326,9 +372,16 @@ def main(argv=None):
                 return P.emit({"ok": True, "configured": bool(oc), "source": src, "config": config_path(),
                                "guide": None if oc else KEY_GUIDE})
             if a.kcmd == "set":
-                oc = (sys.stdin.readline() if a.stdin else (a.oc or "")).strip()
+                if a.prompt:
+                    oc = ask("법제처 Open API 키(OC)를 입력하십시오. https://open.law.go.kr → OPEN API 사용 신청에서 받은 값입니다",
+                             "법제처 Open API")
+                elif a.stdin:
+                    oc = sys.stdin.readline()
+                else:
+                    raise P.BriefError("키(OC)는 --prompt(입력 창) 또는 --stdin 으로만 받습니다 — 명령행에 남기지 않습니다")
+                oc = (oc or "").strip()
                 if not oc:
-                    raise P.BriefError("키(OC)를 인자나 --stdin 으로 주십시오")
+                    raise P.BriefError("빈 키는 저장하지 않습니다")
                 if not a.no_check:
                     find_prec_exact(Client(oc=oc), "2016다225353")  # 키·IP 검증(실패면 저장하지 않음)
                 return P.emit({"ok": True, "saved": save_key(oc), "checked": not a.no_check})

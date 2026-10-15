@@ -6,7 +6,7 @@ MCP 를 쓰지 않는다. 법제처 Open API 를 직접 부르는 스크립트 `
 
 - 스크립트 폴더 `$S`: 이 플러그인 루트의 `skills/intent-brief/scripts` (스킬을 불러올 때 표시되는 기준 경로가 `…/skills/<스킬>` 이면 `…/skills/intent-brief/scripts`). 플러그인으로 설치됐다면 `${CLAUDE_PLUGIN_ROOT}/skills/intent-brief/scripts`.
 - Python 3.9 이상 `$PY`: `python3 --version` → `python --version` → `py -3 --version` 순서로 찾는다. 외부 패키지는 필요 없다.
-- 법제처 키(OC): `"$PY" "$S/lawapi.py" key status` → `configured: false` 면 `guide` 문구대로 사용자에게 OC 값을 일반 텍스트로 받아 `printf '%s\n' '<OC>' | "$PY" "$S/lawapi.py" key set --stdin` 으로 저장한다(판례 1건으로 검증, 본인만 읽는 파일). 키 값은 다시 출력하거나 다른 곳에 적지 않는다. `key_invalid` 면 키가 틀렸거나 이 PC 의 IP 가 법제처에 등록되지 않은 것이다. 법제처 장애(`outage`)로 검증이 안 되면 `--no-check` 를 붙여 저장한다.
+- 법제처 키(OC): `"$PY" "$S/lawapi.py" key status` → `configured: false` 면 `/lawfirm:law-key-setup` 절차(`commands/law-key-setup.md`)대로 `"$PY" "$S/lawapi.py" key set --prompt` 로 사용자가 **입력 창**에 OC 값을 직접 넣게 해 저장한다(채팅으로 달라고 하지 않는다 · 판례 1건으로 검증 · 본인만 읽는 파일 · Bash timeout 600000). 입력 창을 띄울 수 없는 환경이면 사용자가 자기 터미널에서 같은 명령을 실행하게 한다. 키 값은 다시 출력하거나 다른 곳에 적지 않는다. `key_invalid` 면 키가 틀렸거나 이 PC 의 IP 가 법제처에 등록되지 않은 것이다. 법제처 장애(`outage`)로 검증이 안 되면 `--no-check` 를 붙여 저장한다.
 - 빅케이스: `"$PY" "$S/casesearch.py" status` → `available: true` 면 판례 검색에 함께 쓴다(본인 계정, 사람이 찾는 정도의 빈도로만, 페이지를 끝까지 넘기지 않는다). `false` 면 법제처만 쓴다.
 
 ## 명령

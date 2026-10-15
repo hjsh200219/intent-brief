@@ -199,3 +199,43 @@ def test_read_errors_become_unavailable(monkeypatch):
         monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **k: Resp(exc))
         with pytest.raises(L.Unavailable):
             L.Client(oc="k", interval=0, backoff=0).get("lawSearch.do", target="law", query="민법")
+
+
+def test_key_set_prompt_uses_input_window(nokey, monkeypatch, capsys):
+    """키는 사용자가 입력 창(터미널이면 프롬프트)에 직접 넣는다 — 채팅·명령행 인자로 받지 않는다."""
+    asked = []
+    monkeypatch.setattr(L, "ask", lambda message, title: asked.append((message, title)) or "  fromwindow ")
+    assert L.main(["key", "set", "--prompt", "--no-check"]) == 0
+    out = capsys.readouterr().out
+    assert "fromwindow" not in out and L.find_key()[0] == "fromwindow"
+    assert asked and "open.law.go.kr" in asked[0][0] and asked[0][1] == "법제처 Open API"
+
+
+def test_key_set_prompt_cancel_saves_nothing(nokey, monkeypatch, capsys):
+    def cancel(message, title):
+        raise P.BriefError("입력을 취소했습니다")
+    monkeypatch.setattr(L, "ask", cancel)
+    assert L.main(["key", "set", "--prompt", "--no-check"]) != 0
+    assert L.find_key() == (None, None)
+
+
+def test_key_set_rejects_value_on_command_line(nokey):
+    """명령행 인자로 키를 받으면 셸 기록·대화 기록에 남는다 — 인자 자리를 두지 않는다."""
+    with pytest.raises(SystemExit):
+        L.main(["key", "set", "abc123", "--no-check"])
+    assert L.find_key() == (None, None)
+
+
+def test_ask_uses_osascript_when_no_terminal(monkeypatch):
+    import subprocess
+    import types
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False, raising=False)
+    monkeypatch.setattr(L.sys, "platform", "darwin")
+    seen = {}
+
+    def run(cmd, **kw):
+        seen["cmd"] = cmd
+        return types.SimpleNamespace(returncode=0, stdout="oc-from-dialog\n")
+    monkeypatch.setattr(subprocess, "run", run)
+    assert L.ask("키를 넣으십시오", "법제처 Open API") == "oc-from-dialog"
+    assert seen["cmd"][0] == "osascript" and "법제처 Open API" in seen["cmd"][2]
