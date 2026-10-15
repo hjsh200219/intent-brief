@@ -1,7 +1,7 @@
 """draft.md → 초안 .docx, design.json·대조 결과 → 내부_…_의도대응표.docx (+ 의뢰인 보고).
 
 외부 패키지 없이 zipfile 로 OOXML 을 직접 쓴다. A4, 바탕 12pt(w:eastAsia 지정), 여백 25/20/25/25mm, 양쪽 정렬.
-[확인 필요: …]·[k-law …] 태그는 빨간 글자. 기존 파일은 덮어쓰지 않고 _vN 을 올린다.
+[확인 필요: …]·[법제처 …] 태그는 빨간 글자. 기존 파일은 덮어쓰지 않고 _vN 을 올린다.
 
 사용:
   render_docx.py all <state.json> --name <사건약칭> [--out-dir <폴더>]
@@ -20,7 +20,7 @@ import check_draft as CD  # noqa: E402
 
 FONT = "바탕"
 RED = "C00000"
-_TAG = re.compile(r"(\[확인 필요[^\]]*\]|\[k-law[^\]]*\])")
+_TAG = re.compile(r"(\[확인 필요[^\]]*\]|\[법제처[^\]]*\])")
 _BOLD = re.compile(r"\*\*(.+?)\*\*")
 
 CONTENT_TYPES = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -246,12 +246,12 @@ def table_body(st, design, cite, draft_md):
     o.append(para("「확인됨」은 그 조문·판례가 법제처 원문에 존재한다는 뜻이며 인용의 적합성은 보증하지 않습니다. 「해석」은 원문 대조 대상이 아닙니다."))
     o.append(table([["기본값 근거", "종류"]] + [[b["ref"], b["kind"]] for b in design["legal_basis"]], [7000, 2355]))
     if cite:
-        lab = {"confirmed": "확인됨", "unverified": "미확인", "search_limit": "탐색 상한 도달", "outage": "장애",
-               "arg_error": "인자 오류", "format_changed": "응답 형식 변경", "pending": "대조 중단"}
+        lab = {"confirmed": "확인됨", "unverified": "미확인", "outage": "장애", "key_invalid": "키 오류",
+               "format_changed": "응답 형식 변경", "pending": "대조 중단"}
         o.append(table([["초안 인용", "상태", "원문·요지(존재 확인 — 적합성 미보증)"]] +
                        [[r["text"], lab.get(r["status"], r["status"]), r.get("excerpt") or r.get("detail") or ""] for r in cite["results"]],
                        [2600, 1300, 5455]))
-    tags = sorted(set(re.findall(r"\[확인 필요[^\]]*\]|\[k-law[^\]]*\]", draft_md)))
+    tags = sorted(set(re.findall(r"\[확인 필요[^\]]*\]|\[법제처[^\]]*\]", draft_md)))
     o.append(para("7. [확인 필요] 목록", "Heading1"))
     o.append(table([["태그", "건수"]] + [[t, str(draft_md.count(t))] for t in tags] if tags else [["태그", "건수"], ["없음", "0"]], [7355, 2000]))
     o.append(para("8. 할 일", "Heading1"))

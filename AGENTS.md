@@ -1,12 +1,12 @@
 # AGENTS.md — intent-brief
 
-변호사가 서면의 의도를 고르면 그 의도에 맞춘 민사 준비서면·답변서 초안(.docx)과 내부용 의도대응표를 만드는 Claude Code 플러그인. 스킬 1개(`intent-brief`) + 원격 MCP 1개(`k-data`). 서버·DB·빌드 없음.
+변호사가 서면의 의도를 고르면 그 의도에 맞춘 민사 준비서면·답변서 초안(.docx)과 내부용 의도대응표를 만드는 Claude Code 플러그인. 스킬 1개(`intent-brief`). 법령·판례는 법제처 Open API 를 직접 부른다(키는 변호사에게 받아 저장, MCP 없음). 서버·DB·빌드 없음.
 
 ## 지도
 
 | 무엇 | 어디 |
 |---|---|
-| 매니페스트 | `.claude-plugin/plugin.json`·`marketplace.json`(버전 둘 다 맞춘다) · `.mcp.json` |
+| 매니페스트 | `.claude-plugin/plugin.json`·`marketplace.json`(버전 둘 다 맞춘다) |
 | 스킬 절차(모델이 읽는 정본) | `skills/intent-brief/SKILL.md` |
 | 의도·채점·문구 데이터 | `skills/intent-brief/references/` — `intent-params.json`(섹션 어휘·충돌표), `intents.md`, `scoring.md`, `phrases.json`, `brief-types/` |
 | 런타임 스크립트 | `skills/intent-brief/scripts/` — 역할·의존 방향은 [ARCHITECTURE.md](ARCHITECTURE.md) |
@@ -21,7 +21,7 @@
 ```
 uv run --no-project --with pytest --with python-docx==1.2.0 pytest tests/            # 전체(문서 검사 포함)
 uv run --no-project --python 3.9 --with pytest --with python-docx==1.2.0 pytest tests/  # 받는 PC 최저 버전
-claude plugin validate --strict .                                                     # 매니페스트·.mcp.json
+claude plugin validate --strict .                                                     # 매니페스트
 python3 dev/verify_docs.py                                                             # 문서 링크·버전·줄 수
 ```
 
@@ -32,8 +32,8 @@ python3 dev/verify_docs.py                                                      
 1. 런타임 스크립트는 **표준 라이브러리만, Python 3.9 문법**. `tests/test_params.py` 가 import·문법을 검사한다.
 2. 작업 폴더는 플러그인 밖 — macOS `~/.intent-brief/`, Windows `%LOCALAPPDATA%\intent-brief\`. `CLAUDE_PLUGIN_DATA` 는 uninstall 때 지워지므로 쓰지 않는다.
 3. 사건 폴더의 `사건메모.md` 는 `memo.py apply` 의 확인 토큰으로만 쓴다. 줄바꿈(CRLF)을 보존하고, 사본에 먼저 적용해 성공했을 때만 바꾼다.
-4. `.mcp.json` 서버 `type` 은 `"http"`. `"url"` 이면 로드 때 서버가 조용히 빠진다. 대조 스크립트도 이 파일의 URL 을 읽는다.
-5. 인용 「확인됨」은 법제처 원문 **정확 일치**일 때만. 못 찾으면 `[확인 필요]`, 서버 장애면 `[k-law 장애 — 미확인]`.
+4. 법제처 키(OC)는 `lawapi.py` 만 다룬다 — 작업 폴더 config.json(0600)에 저장하고 출력·캐시·오류 문구에 값을 쓰지 않는다(URL 은 `OC=***` 로 가린다). 키가 없으면 대조를 멈추고 변호사에게 받는다.
+5. 인용 「확인됨」은 법제처 원문 **정확 일치**일 때만. 못 찾으면 `[확인 필요: 법제처 미확인]`, 서버 장애면 `[법제처 장애 — 미확인]`.
 6. 어떤 의도도 거부하지 않는다. 의도를 정하면 소송 전체 기준 유불리를 먼저 보여 주고(`intent_review`) 진행 여부는 변호사가 정한다 — 설계 확정은 지금 의도에 대한 「진행」 결정을 요구한다. 자료에 없는 사실은 지어내지 않고 `[확인 필요: …]` 로 둔다.
 
 ## 개발 규칙

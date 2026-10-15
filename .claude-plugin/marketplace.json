@@ -10,7 +10,7 @@
       "name": "intent-brief",
       "source": "./",
       "description": "변호사가 고른 서면 의도에 맞춰 민사 준비서면·답변서 초안과 내부용 의도대응표를 만든다. 인용은 법제처 원문과 정확 일치로 대조한다.",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "category": "legal",
       "tags": ["korean-law", "legal", "litigation", "준비서면", "답변서"],
       "author": {

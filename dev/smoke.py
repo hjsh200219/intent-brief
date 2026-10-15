@@ -1,7 +1,7 @@
 """개발 전용 실기 점검(Windows·macOS) — 표준 라이브러리만. 공개 전에 받는 PC 와 같은 환경에서 돌린다.
 
 점검: Python 버전 · 한글 사건 경로 · CRLF 사건메모 · 작업 폴더 기본 경로(LOCALAPPDATA/HOME) · 인터뷰 상태·채점·해석 ·
-확인 토큰 사건메모 쓰기(CRLF 보존·사본 위치) · 설계 준수 검사 · docx 생성 · 원격 인용 대조 1건.
+확인 토큰 사건메모 쓰기(CRLF 보존·사본 위치) · 설계 준수 검사 · docx 생성 · 법제처 인용 대조 1건(LAW_API_OC 필요).
 
 사용: python dev/smoke.py [--keep]
 """
@@ -68,7 +68,12 @@ def main():
     rc, o = run(env, "state.py", "apply", state, "--json", json.dumps(upd, ensure_ascii=False))
     check("state apply(한글 JSON 인자)", rc == 0 and o.get("ok"), o)
     rc, o = run(env, "score.py", state)
-    check("score 통과·다음=설계 확인", o.get("pass") and o.get("next", {}).get("round_type") == "design_confirm", o.get("next"))
+    check("score 통과·다음=의도 유불리 검토", o.get("pass") and o.get("next", {}).get("round_type") == "intent_review", o.get("next"))
+    rv = {"intent_review": {"verdict": "조건부", "gains": ["조정 종결"], "forgoes": ["smoke 놓치는 것"], "alternatives": [],
+                            "decision": "진행"}, "round": {"round_type": "intent_review", "question": "smoke", "answer": "1"}}
+    run(env, "state.py", "apply", state, "--json", json.dumps(rv, ensure_ascii=False))
+    rc, o = run(env, "score.py", state)
+    check("검토 뒤 다음=설계 확인", o.get("next", {}).get("round_type") == "design_confirm", o.get("next"))
     run(env, "state.py", "set-status", state, "confirming")
     rc, o = run(env, "intent.py", "resolve", state, "--write")
     design = o.get("design_path", "")
@@ -100,7 +105,10 @@ def main():
     rc, o = run(env, "check_draft.py", "check", draft, design, "--state", state, "--record", "first")
     check("설계 준수 검사(CRLF 초안)", rc == 0 and o.get("rate") == 1.0, o.get("failures"))
     rc, o = run(env, "cite_check.py", "run", draft, "--max-seconds", "120")
-    check("원격 인용 대조(제288조)", o.get("summary", {}).get("confirmed") == 1, o.get("summary") or o)
+    if o.get("error") == "no_key":
+        check("법제처 인용 대조(제288조)", False, "키 없음 — 환경변수 LAW_API_OC 로 법제처 OC 를 주고 다시 실행")
+    else:
+        check("법제처 인용 대조(제288조)", o.get("summary", {}).get("confirmed") == 1, o.get("summary") or o)
     run(env, "state.py", "set-status", state, "designed") if json.load(open(state, encoding="utf-8"))["status"] != "designed" else None
     rc, o = run(env, "render_docx.py", "all", state, "--name", "대여금")
     paths = (o.get("paths") or {})

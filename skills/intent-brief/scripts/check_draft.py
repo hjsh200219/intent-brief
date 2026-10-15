@@ -145,7 +145,7 @@ def check(md, design, params=None, phrases=None):
     return {"rate": round(passed / len(checks), 3), "passed": passed, "total": len(checks),
             "failures": [c for c in checks if not c["ok"]], "checks": checks,
             "metrics": {"assertive": n_assert, "chars": n_chars,
-                        "check_tags": len(re.findall(r"\[확인 필요", md)), "klaw_tags": len(re.findall(r"\[k-law", md))}}
+                        "check_tags": len(re.findall(r"\[확인 필요", md)), "law_api_tags": len(re.findall(r"\[법제처", md))}}
 
 
 def main(argv=None):

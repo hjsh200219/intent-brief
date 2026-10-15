@@ -20,7 +20,8 @@ description: "변호사가 이번 민사 준비서면·답변서로 얻으려는
 - Python 3.9 이상이 필요하다(외부 패키지 없음). 처음에 `python3 --version` → `python --version` → `py -3 --version` 순서로 3.9+ 인 것을 찾아 `$PY` 로 쓴다. Windows 의 Microsoft Store 별칭은 버전을 출력하지 못하므로 자연히 걸러진다. 하나도 없으면 「Python 3.9 이상을 설치해 주십시오(Windows: https://www.python.org/downloads/ 또는 `winget install Python.Python.3.12`)」라고 안내하고 멈춘다.
 - 모든 스크립트는 JSON 을 출력한다. `"ok": false` 면 `error` 를 변호사에게 그대로 알리고, 추측으로 넘어가지 않는다.
 - 작업 폴더: macOS `~/.intent-brief/cases/<사건 키>/`, Windows `%LOCALAPPDATA%\intent-brief\cases\<사건 키>\`. 플러그인을 지워도 남는다. 지우려면 `"$PY" "$S/state.py" purge <사건폴더>` (전부는 `--all`).
-- 인용 대조 연결 확인: `"$PY" "$S/cite_check.py" ping` — 실패해도 계속한다(인용 대조만 장애 태그).
+- 법제처 키(OC): 처음에 `"$PY" "$S/lawapi.py" key status`. `configured: false` 면 `guide` 문구로 변호사에게 OC 값을 일반 텍스트로 요청하고, 받으면 `printf '%s\n' '<OC>' | "$PY" "$S/lawapi.py" key set --stdin` 으로 저장한다(판례 1건 조회로 검증 — `key_invalid` 면 키가 틀렸거나 이 PC IP 가 법제처에 등록되지 않은 것이니 그대로 알린다). 키 값은 다시 출력하거나 다른 파일에 적지 않는다. 키 없이도 인터뷰·설계·초안은 진행하되 인용 대조(7)는 키를 받은 뒤에 한다.
+- 인용 대조 연결 확인: `"$PY" "$S/cite_check.py" ping` — 장애면 계속한다(인용 대조만 장애 태그). 법령·판례를 찾아볼 때도 이 스크립트를 쓴다: `lawapi.py law <법령명> --article 288`, `lawapi.py prec-search <검색어> [--fulltext] [--court 대법원]`, `lawapi.py prec <판례일련번호>`.
 
 ## 1. 시작
 
@@ -149,7 +150,7 @@ brief_type: 준비서면
 
 ## 7. 인용 대조
 
-`"$PY" "$S/cite_check.py" run "<draft.md>"` — Bash timeout 을 600000 으로 준다. 호출 1회 약 3초라 인용이 많으면 오래 걸린다. `complete: false` 면 같은 명령을 다시 실행한다(캐시로 이어 간다). 판례 검색 기본은 `search_type=case_name`(그 번호의 판결 자체를 찾음), 0건이면 `full_text`(그 번호를 인용한 판결까지 찾음)로 한 번 더 — 2026-10-14 실측: `2018다248626` 은 case_name 4건 중 4번째·full_text 8건 중 8번째, `2014다26187` 은 case_name 0건·full_text 5건(모두 그 번호를 인용한 하급심, 원문은 법제처 DB 에 없음). 선고일이 적혀 있으면 그 날짜로 좁혀 찾고, 없으면 날짜 없이 다시 찾아 「선고일 불일치」나 「인용한 다른 판결 N건」을 알려 준다. 확인되지 않은 인용 뒤에는 스크립트가 태그를 붙인다: `[확인 필요: k-law 미확인]`·`[확인 필요: k-law 탐색 상한 도달]`·`[k-law 장애 — 미확인]` 등. 「확인됨」은 존재 확인일 뿐 적합성은 변호사가 본다.
+`"$PY" "$S/cite_check.py" run "<draft.md>"` — Bash timeout 을 600000 으로 준다. 법제처 Open API 를 직접 부른다(호출 간격 1초). `complete: false` 면 같은 명령을 다시 실행한다(캐시로 이어 간다). `error: no_key` 면 대조하지 않은 것이다 — 0 의 키 절차를 하고 다시 실행한다. 조문은 법령명(약칭 포함) 정확 일치 → 조문 본문, 판례는 사건번호 정확 일치(`nb`)로 찾는다. 선고일이 적혀 있으면 원문 선고일과 비교해 다르면 「선고일 불일치」, 번호가 없으면 본문 검색으로 「이 번호를 인용한 다른 판결 N건」을 알려 준다(예: 2014다26187 은 법제처 DB 에 원문이 없다). 확인되지 않은 인용 뒤에는 스크립트가 태그를 붙인다: `[확인 필요: 법제처 미확인]`·`[법제처 장애 — 미확인]`·`[법제처 키 오류 — 미확인]` 등. 「확인됨」은 존재 확인일 뿐 적합성은 변호사가 본다.
 
 ## 8. 렌더·저장
 

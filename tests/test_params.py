@@ -95,7 +95,7 @@ def test_intents_md_matches_json(params):
 
 
 def test_phrases_tags(phrases):
-    for k in ("claim_reduction_optional", "claim_change_required", "unverified", "search_limit", "outage", "format_changed", "arg_error"):
+    for k in ("claim_reduction_optional", "claim_change_required", "unverified", "outage", "format_changed", "key_invalid", "intent_review_forgone"):
         assert k in phrases["tag"]
     assert "예비적" not in phrases["tag"]["claim_reduction_optional"]
     assert "{remaining}" in phrases["tag"]["claim_reduction_optional"]
@@ -142,7 +142,8 @@ ALLOWED_LOCAL = {
     "_paths": set(),
     "state": {"_paths"},
     "score": {"_paths"},
-    "cite_check": {"_paths"},
+    "lawapi": {"_paths"},
+    "cite_check": {"_paths", "lawapi"},
     "intent": {"_paths", "state"},
     "memo": {"_paths", "state"},
     "check_draft": {"_paths", "state"},

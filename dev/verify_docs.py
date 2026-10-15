@@ -14,7 +14,7 @@ DOCS = ["AGENTS.md", "ARCHITECTURE.md", "README.md", "docs/QUALITY.md", "docs/ex
 ENTRY_MAX = 120
 _LINK = re.compile(r"\]\(([^)#\s]+)(?:#[^)]*)?\)")
 # 백틱 안의 repo 경로 — 디렉터리 접두사로 시작하는 것만 본다(명령·예시 문자열 제외).
-_PATH = re.compile(r"`((?:skills|tests|dev|docs|\.claude-plugin|\.claude)/[^`*<>\s]*|\.mcp\.json|ARCHITECTURE\.md|README\.md)`")
+_PATH = re.compile(r"`((?:skills|tests|dev|docs|\.claude-plugin|\.claude)/[^`*<>\s]*|ARCHITECTURE\.md|README\.md)`")
 # 백틱 안의 접두사 없는 파일명(`_paths.py`, `phrases.json`) — repo 어딘가에 같은 이름이 있어야 한다.
 _NAME = re.compile(r"`([\w.-]+\.(?:py|md|json))`")
 _SKIP_DIRS = {".git", "__pycache__", ".pytest_cache", "_out"}
