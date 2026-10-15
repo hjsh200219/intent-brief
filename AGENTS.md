@@ -1,6 +1,6 @@
 # AGENTS.md — lawfirm
 
-한국 변호사용 법률 업무 Claude Code 플러그인. 스킬 8개 — `intent-brief`(의도 기반 민사 준비서면·답변서 초안 + 내부용 의도대응표) + `case-search`(빅케이스 판례 검색) + thechain.lawyer 법률 문서 스킬 6개(lyn-lawfirm 에서 내장). 0.4.0 에서 intent-brief·case-search·lyn-lawfirm 플러그인을 합쳤다(옛 repo 둘은 이전 안내용 마켓플레이스만 남는다). 법령·판례는 법제처 Open API 를 직접 부른다(키는 변호사에게 받아 저장, MCP 없음). 빅케이스에 로그인돼 있으면 민사 서면 인용 대조에 보조로 연결한다. 서버·DB·빌드 없음.
+한국 변호사용 법률 업무 Claude Code 플러그인. 스킬 8개 — `intent-brief`(의도 기반 민사 준비서면·답변서 초안 + 내부용 의도대응표) + `case-search`(판례·법령 검색 — 법제처·빅케이스·미국·독일) + thechain.lawyer 법률 문서 스킬 6개(lyn-lawfirm 에서 내장). 0.4.0 에서 intent-brief·case-search·lyn-lawfirm 플러그인을 합쳤다(옛 repo 둘은 이전 안내용 마켓플레이스만 남는다). 법령·판례는 법제처 Open API 를 직접 부른다(키는 변호사에게 받아 저장, MCP 없음). 빅케이스에 로그인돼 있으면 민사 서면 인용 대조에 보조로 연결한다. 서버·DB·빌드 없음.
 
 ## 지도
 
@@ -8,6 +8,7 @@
 |---|---|
 | 매니페스트 | `.claude-plugin/plugin.json`·`marketplace.json`(버전 둘 다 맞춘다) |
 | 스킬 절차(모델이 읽는 정본) | `skills/intent-brief/SKILL.md` · `skills/case-search/SKILL.md` |
+| 해외 판례 클라이언트(표준 라이브러리, Python 3.9) | `skills/case-search/scripts/foreigncase.py` — 미국 CourtListener·독일 OpenLegalData · 키 등록 명령 `commands/law-key-setup.md` |
 | 빅케이스 클라이언트(uv inline 의존성) | `skills/case-search/scripts/bigcase.py` · 설정 명령 `commands/case-search-setup.md` · API 근거 [docs/case-search/bigcase-api.md](docs/case-search/bigcase-api.md) · LBOX 정찰 [docs/case-search/lbox/](docs/case-search/lbox/README.md) |
 | 내장 스킬 6개(lyn-lawfirm `9d620a9` 복사, 이후 따로 감) | `skills/certified-letter/` 외 5개 — 법령·판례는 `references/law-lookup.md`, CTA 는 `references/cta-config.md` |
 | 의도·채점·문구 데이터 | `skills/intent-brief/references/` — `intent-params.json`(섹션 어휘·충돌표), `intents.md`, `scoring.md`, `phrases.json`, `brief-types/` |

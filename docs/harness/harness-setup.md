@@ -25,6 +25,12 @@
 - 키체인 서비스 `case-search-bigcase`·보관 폴더 `~/.case-search/` 는 이름을 바꾸지 않는다(옛 case-search 사용자 자격증명이 이어진다).
 - 실제 빅케이스는 테스트에서 부르지 않는다(가짜 HTTP). 이용 범위상 사람이 찾는 빈도로만 부른다.
 
+## 원격(해외 판례, `foreigncase.py`)
+- 독일 OpenLegalData 의 `/api/cases/?search=` 는 검색어를 무시하고 전체(425,071건)를 돌려준다 — 본문 검색은 `/api/cases/search/?text=`(2026-10-15 실측). 법원 필터는 코드(`BGH`·`OLGSL`) 또는 `court_level_of_appeal=Bundesgericht`.
+- 미국 CourtListener 는 검색(`/search/?type=o`)이 익명으로 되고 본문(`/opinions/<id>/`)은 토큰이 없으면 401. `plain_text` 가 비어 있는 판결이 많아 `html_with_citations` 등을 순서대로 본다.
+- 토큰은 두 고정 호스트로만 보낸다 — 주소를 인자로 받는 명령을 만들지 않는다.
+- 키·토큰은 `--prompt`(입력 창) 또는 `--stdin` 으로만 받는다. 명령행 인자 자리를 두지 않는다(셸 기록·대화 기록에 남는다).
+
 ## 공유 모듈
 | 모듈 | 쓰는 곳 |
 |---|---|
@@ -33,4 +39,5 @@
 | `check_draft` — draft.md 파싱(`parse_draft`·`split_front`) | `render_docx`(`split_front`·앵커 정규식), `dev/e2e.py` |
 | `lawapi.py` — 법제처 Open API 호출·키(OC) 보관·오류 분류 | `cite_check`, SKILL.md·내장 스킬(`references/law-lookup.md` 명령) |
 | `casesearch.py` — 빅케이스 감지·호출(같은 플러그인의 `bigcase.py` 를 `uv run` 으로) | `cite_check`, SKILL.md·내장 스킬 |
+| `skills/case-search/scripts/foreigncase.py` — 해외 판례(미국·독일) 검색·본문·토큰 보관 | `skills/case-search/SKILL.md`, `commands/law-key-setup.md` |
 | `skills/case-search/scripts/bigcase.py` — 빅케이스 로그인·토큰·검색·전문(uv inline 의존성) | `casesearch.py`, `skills/case-search/SKILL.md`, `commands/case-search-setup.md` |

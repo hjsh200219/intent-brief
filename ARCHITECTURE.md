@@ -13,8 +13,11 @@
                               │                  법제처에 없는 판례는 빅케이스 1회(casesearch.py → uv run skills/case-search/scripts/bigcase.py, 로그인 때만)
                               └─ render_docx.py  초안·의도대응표 .docx
 
-빅케이스 요청 → skills/case-search/SKILL.md ─┬─ uv run bigcase.py <명령>   검색·전문·유사 판례·결정례
-/lawfirm:case-search-setup ──────────────────┴─ uv run bigcase.py setup    자격증명(OS 입력 창 → 키체인)
+판례·법령 요청 → skills/case-search/SKILL.md ─┬─ lawapi.py <명령>            법제처 법령·조문·판례·헌재·법령해석례
+                                             ├─ uv run bigcase.py <명령>   빅케이스(계정 있을 때) 전문·유사 판례·결정례
+                                             └─ foreigncase.py <명령>      미국 CourtListener·독일 OpenLegalData
+/lawfirm:case-search-setup ── uv run bigcase.py setup        빅케이스 자격증명(OS 입력 창 → 키체인)
+/lawfirm:law-key-setup ────── lawapi.py key set --prompt     법제처 OC(입력 창) · foreigncase.py key set us --prompt
 ```
 
 모델이 판단할 일(인터뷰 문장, 초안 본문)과 결정론으로 끝낼 일(채점, 설계 해석, 준수 검사, 인용 대조, 렌더)을 나눈다. 결정론 쪽은 전부 스크립트이고 테스트가 있다.
@@ -27,6 +30,7 @@
 | L1 데이터 | `skills/intent-brief/references/` | 없음 |
 | L2 절차 | `skills/intent-brief/SKILL.md`, `skills/case-search/SKILL.md`, 내장 스킬 6개 `skills/*/SKILL.md`, `commands/` | L1, L3(명령으로 호출), 공용 `references/`(law-lookup·cta-config) |
 | L3 런타임 | `skills/intent-brief/scripts/` | 표준 라이브러리, L1, 같은 레이어 |
+| L3c 해외 판례 런타임 | `skills/case-search/scripts/foreigncase.py` | 표준 라이브러리만(Python 3.9) — 다른 런타임 파일을 import 하지 않는다 |
 | L3b 빅케이스 런타임 | `skills/case-search/scripts/bigcase.py` | uv inline 의존성(Scrapling·keyring) — L3 는 import 하지 않고 하위 프로세스로만 부른다 |
 | L4 개발 | `dev/`, `tests/` | 전부 |
 

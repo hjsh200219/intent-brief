@@ -11,7 +11,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOCS = ["AGENTS.md", "ARCHITECTURE.md", "README.md", "docs/QUALITY.md", "docs/exec-plans/tech-debt-tracker.md",
         "docs/harness/principles.md", "docs/harness/maturity-framework.md", "docs/harness/fix-catalog.md",
         "docs/harness/harness-setup.md", "docs/harness/gc-history.md", "docs/case-search/lbox/README.md",
-        "docs/case-search/bigcase-api.md", "skills/case-search/SKILL.md", "commands/case-search-setup.md"]
+        "docs/case-search/bigcase-api.md", "skills/case-search/SKILL.md", "commands/case-search-setup.md",
+        "commands/law-key-setup.md"]
 ENTRY_MAX = 120
 _LINK = re.compile(r"\]\(([^)#\s]+)(?:#[^)]*)?\)")
 # 백틱 안의 repo 경로 — 디렉터리 접두사로 시작하는 것만 본다(명령·예시 문자열 제외).
