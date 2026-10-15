@@ -68,6 +68,13 @@ class BadRequest(ForeignError):
     code = "bad_request"
 
 
+class NetworkBlocked(ForeignError):
+    code = "network_blocked"
+
+
+DIALOG_FAIL = "입력 창을 띄우지 못했습니다(%s) — Codex 샌드박스라면 권한 상승으로 다시 실행하거나, 자기 터미널에서 같은 명령을 직접 실행하십시오"
+
+
 def http_error(status, detail=""):
     """HTTP 상태 → 오류 분류(테스트도 이 함수로 만든다)."""
     if status in (401, 403):
@@ -88,7 +95,9 @@ def _osascript_dialog(message, title, hidden):
               "text returned of result") % (esc(message), "with hidden answer " if hidden else "", esc(title))
     r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=600, check=False)
     if r.returncode != 0:
-        raise BadRequest("입력을 취소했습니다")
+        if "-128" in (r.stderr or ""):  # 사람이 「취소」를 누름
+            raise BadRequest("입력을 취소했습니다")
+        raise BadRequest(DIALOG_FAIL % ((r.stderr or "").strip()[:120] or "osascript 종료 %d" % r.returncode))
     return r.stdout.rstrip("\n")
 
 
@@ -97,14 +106,16 @@ def _windows_dialog(message, title, hidden):
     if hidden:
         ps = ("[Console]::OutputEncoding=[Text.Encoding]::UTF8;"
               "$c=Get-Credential -UserName '%s' -Message '%s';"
-              "if(-not $c){exit 1};[Console]::Out.Write($c.GetNetworkCredential().Password)") % (ttl, msg)
+              "if(-not $c){exit 3};[Console]::Out.Write($c.GetNetworkCredential().Password)") % (ttl, msg)
     else:
         ps = ("[Console]::OutputEncoding=[Text.Encoding]::UTF8;Add-Type -AssemblyName Microsoft.VisualBasic;"
               "$v=[Microsoft.VisualBasic.Interaction]::InputBox('%s','%s');"
-              "if(-not $v){exit 1};[Console]::Out.Write($v)") % (msg, ttl)
+              "if(-not $v){exit 3};[Console]::Out.Write($v)") % (msg, ttl)
     r = subprocess.run(["powershell.exe", "-NoProfile", "-Command", ps], capture_output=True, timeout=600, check=False)
-    if r.returncode != 0:
+    if r.returncode == 3:  # 우리 스크립트의 취소 코드
         raise BadRequest("입력을 취소했습니다")
+    if r.returncode != 0:
+        raise BadRequest(DIALOG_FAIL % ((r.stderr or b"").decode("utf-8", "replace").strip()[:120] or "PowerShell 종료 %d" % r.returncode))
     return r.stdout.decode("utf-8", "replace")
 
 
@@ -208,6 +219,8 @@ def _fetch(url, token=None):
         detail = e.read()[:200].decode("utf-8", "replace")
         raise http_error(e.code, detail)
     except (urllib.error.URLError, socket.timeout, ConnectionError) as e:
+        if os.environ.get("CODEX_SANDBOX_NETWORK_DISABLED") == "1":
+            raise NetworkBlocked("Codex 샌드박스가 네트워크를 막았습니다(서버 장애가 아닙니다) — 네트워크 허용(권한 상승)으로 다시 실행하십시오")
         raise Outage("연결 실패: %s" % e.__class__.__name__)
     try:
         return json.loads(body.decode("utf-8"))

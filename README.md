@@ -43,6 +43,13 @@ codex plugin add lawfirm@lawfirm
 - 같은 스킬 14개를 씁니다. 명령 두 개는 Codex 에서 스킬로 바뀝니다(`source-command-law-key-setup`·`source-command-case-search-setup`) — `/lawfirm:law-key-setup` 대신 「법제처 키 등록해 줘」, 「빅케이스 계정 등록해 줘」처럼 말하면 됩니다.
 - 세션 시작 기한 알림은 훅이라 Codex 가 처음 실행할 때 「Hooks need review」 창을 띄웁니다. 「Trust all and continue」를 고르면 켜집니다(고르지 않으면 알림만 꺼지고 나머지는 그대로).
 - 작업 폴더(`~/.intent-brief`)·법제처 키·빅케이스 키체인을 Claude Code 와 같이 씁니다. 두 도구를 오가도 사건·키가 이어집니다.
+- Codex 기본 샌드박스는 네트워크(법제처·빅케이스·해외 판례)와 작업 폴더 쓰기를 막습니다. 막히면 스크립트가 `network_blocked`·`sandbox_write_blocked` 로 알려 주고 Codex 가 권한 승인을 묻습니다. 매번 묻지 않게 하려면 `~/.codex/config.toml` 에 한 번 적어 둡니다(경로는 본인 것으로):
+
+  ```toml
+  [sandbox_workspace_write]
+  network_access = true
+  writable_roots = ["/Users/<사용자>/.intent-brief"]   # Windows: 'C:\Users\<사용자>\AppData\Local\intent-brief'
+  ```
 - 업데이트: `codex plugin marketplace upgrade lawfirm` → `codex plugin add lawfirm@lawfirm`.
 
 쓰는 기능에 따라 더 필요한 것:

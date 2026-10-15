@@ -9,7 +9,7 @@
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/litigation-calc/scripts/dday.py\" hook 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/skills/litigation-calc/scripts/dday.py\" hook 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/skills/litigation-calc/scripts/dday.py\" hook 2>/dev/null || true",
             "timeout": 10,
-            "commandWindows": "py -3 \"${CLAUDE_PLUGIN_ROOT}/skills/litigation-calc/scripts/dday.py\" hook 2>$null; if (-not $?) { python \"${CLAUDE_PLUGIN_ROOT}/skills/litigation-calc/scripts/dday.py\" hook 2>$null }; exit 0"
+            "commandWindows": "py -3 \"${CLAUDE_PLUGIN_ROOT}/skills/litigation-calc/scripts/dday.py\" hook 2>$null; if (-not $?) { python3 \"${CLAUDE_PLUGIN_ROOT}/skills/litigation-calc/scripts/dday.py\" hook 2>$null; if (-not $?) { python \"${CLAUDE_PLUGIN_ROOT}/skills/litigation-calc/scripts/dday.py\" hook 2>$null } }; exit 0"
           }
         ]
       }

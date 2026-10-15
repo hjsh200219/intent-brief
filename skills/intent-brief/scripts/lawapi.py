@@ -43,6 +43,9 @@ KEY_GUIDE = ("법제처 Open API 키(OC)가 필요합니다. https://open.law.go
              "신청 때 이 PC 의 IP 주소 등록을 요구할 수 있습니다.")
 
 
+DIALOG_FAIL = "입력 창을 띄우지 못했습니다(%s) — Codex 샌드박스라면 권한 상승으로 다시 실행하거나, 자기 터미널에서 같은 명령을 직접 실행하십시오"
+
+
 def _osascript_dialog(message, title, hidden):
     esc = lambda s: s.replace("\\", "\\\\").replace('"', '\\"')
     script = ('display dialog "%s" default answer "" %swith title "%s" '
@@ -50,7 +53,9 @@ def _osascript_dialog(message, title, hidden):
               "text returned of result") % (esc(message), "with hidden answer " if hidden else "", esc(title))
     r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=600, check=False)
     if r.returncode != 0:
-        raise P.BriefError("입력을 취소했습니다")
+        if "-128" in (r.stderr or ""):  # 사람이 「취소」를 누름
+            raise P.BriefError("입력을 취소했습니다")
+        raise P.BriefError(DIALOG_FAIL % ((r.stderr or "").strip()[:120] or "osascript 종료 %d" % r.returncode))
     return r.stdout.rstrip("\n")
 
 
@@ -59,14 +64,16 @@ def _windows_dialog(message, title, hidden):
     if hidden:
         ps = ("[Console]::OutputEncoding=[Text.Encoding]::UTF8;"
               "$c=Get-Credential -UserName '%s' -Message '%s';"
-              "if(-not $c){exit 1};[Console]::Out.Write($c.GetNetworkCredential().Password)") % (ttl, msg)
+              "if(-not $c){exit 3};[Console]::Out.Write($c.GetNetworkCredential().Password)") % (ttl, msg)
     else:
         ps = ("[Console]::OutputEncoding=[Text.Encoding]::UTF8;Add-Type -AssemblyName Microsoft.VisualBasic;"
               "$v=[Microsoft.VisualBasic.Interaction]::InputBox('%s','%s');"
-              "if(-not $v){exit 1};[Console]::Out.Write($v)") % (msg, ttl)
+              "if(-not $v){exit 3};[Console]::Out.Write($v)") % (msg, ttl)
     r = subprocess.run(["powershell.exe", "-NoProfile", "-Command", ps], capture_output=True, timeout=600, check=False)
-    if r.returncode != 0:
+    if r.returncode == 3:  # 우리 스크립트의 취소 코드 — 다른 실패(창을 못 띄움)와 구별한다
         raise P.BriefError("입력을 취소했습니다")
+    if r.returncode != 0:
+        raise P.BriefError(DIALOG_FAIL % ((r.stderr or b"").decode("utf-8", "replace").strip()[:120] or "PowerShell 종료 %d" % r.returncode))
     return r.stdout.decode("utf-8", "replace")
 
 
@@ -96,6 +103,18 @@ class KeyInvalid(Exception):
 
 class Unavailable(Exception):
     """연결 실패·타임아웃·5xx·빈 응답."""
+
+
+class NetworkBlocked(Unavailable):
+    """Codex 샌드박스가 네트워크를 막았다 — 법제처 장애가 아니다(막히면 DNS 실패로 보여 장애와 구별되지 않는다)."""
+
+
+NETWORK_BLOCKED = ("Codex 샌드박스가 네트워크를 막았습니다(법제처 장애가 아닙니다). 네트워크 허용(권한 상승)으로 같은 명령을 다시 "
+                   "실행하거나, config.toml 의 [sandbox_workspace_write] network_access = true 로 켜 두십시오.")
+
+
+def sandbox_network_blocked():
+    return os.environ.get("CODEX_SANDBOX_NETWORK_DISABLED") == "1"
 
 
 class FormatChanged(Exception):
@@ -189,6 +208,8 @@ class Client:
                     continue
                 raise err
             except (urllib.error.URLError, http.client.HTTPException, TimeoutError, socket.timeout, OSError) as e:
+                if sandbox_network_blocked():
+                    raise NetworkBlocked(NETWORK_BLOCKED)  # 다시 해도 같다 — 기다리지 않는다
                 err = Unavailable("연결 실패 또는 타임아웃: %s" % _mask(e))
                 time.sleep(self.backoff * (attempt + 1))
                 continue
@@ -453,6 +474,8 @@ def _download_form(seq):
     except urllib.error.HTTPError as e:
         raise Unavailable("서식 파일 HTTP %d" % e.code)
     except (urllib.error.URLError, socket.timeout, ConnectionError) as e:
+        if sandbox_network_blocked():
+            raise NetworkBlocked(NETWORK_BLOCKED)
         raise Unavailable("서식 파일 연결 실패: %s" % e.__class__.__name__)
     m = re.search(r"filename\*?=(?:UTF-8'')?\"?([^\";]+)", disp)
     name = urllib.parse.unquote(m.group(1)) if m else ""
@@ -576,6 +599,8 @@ def main(argv=None):
         return P.emit({"ok": False, "error": "no_key", "guide": str(e)}, 4)
     except KeyInvalid as e:
         return P.emit({"ok": False, "error": "key_invalid", "detail": str(e), "guide": KEY_GUIDE}, 4)
+    except NetworkBlocked as e:
+        return P.emit({"ok": False, "error": "network_blocked", "detail": str(e)}, 7)
     except Unavailable as e:
         return P.emit({"ok": False, "error": "outage", "detail": str(e)}, 5)
     except FormatChanged as e:

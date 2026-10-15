@@ -25,9 +25,12 @@ uv run "$A/discover.py" "<URL>" --out <작업 폴더>/spec
 
 정적 분석으로 페이지와 같은 호스트 스크립트에서 API 경로 후보(`endpoints`)·로그인 후보(`auth_candidates`)·GraphQL 작업명·HTML 에 심은 데이터(`inline_state`)를 찾아 `spec/endpoints.json` 에 쓴다.
 
-후보가 비었거나 `inline_state` 만 나오면(SPA·서버 렌더링) 실제 네트워크를 잡는다. 사람이 원격 디버깅 Chrome 을 직접 띄우게 안내한다(입력 칸에 `!` 를 붙여 실행):
+후보가 비었거나 `inline_state` 만 나오면(SPA·서버 렌더링) 실제 네트워크를 잡는다. 사람이 원격 디버깅 Chrome 을 직접 띄우게 안내한다(Claude Code 는 입력 칸에 `!` 를 붙여 실행, Codex 는 사람이 자기 터미널에서 실행):
 ```
-! "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --remote-debugging-port=9222 --user-data-dir="$HOME/.cache/chrome-cdp"
+# macOS
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --remote-debugging-port=9222 --user-data-dir="$HOME/.cache/chrome-cdp"
+# Windows (PowerShell) — Chrome 이 다른 곳에 있으면 "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe"
+& "$env:ProgramFiles\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="$env:LOCALAPPDATA\chrome-cdp"
 ```
 그 창에서 사람이 로그인·검색을 한 뒤:
 ```

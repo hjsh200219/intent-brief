@@ -186,6 +186,21 @@ def emit(obj, code=0):
     return code
 
 
+SANDBOX_WRITE_GUIDE = ("Codex 샌드박스가 작업 폴더(macOS ~/.intent-brief, Windows %LOCALAPPDATA%\\intent-brief) 쓰기를 막았습니다. "
+                       "권한 상승으로 같은 명령을 다시 실행하거나, config.toml 의 [sandbox_workspace_write] writable_roots 에 그 폴더를 넣으십시오.")
+
+
+def _excepthook(kind, exc, tb):
+    """Codex 샌드박스의 쓰기 거부는 트레이스백 대신 사람이 알아볼 JSON 으로 — 그 밖의 예외는 원래대로."""
+    if issubclass(kind, PermissionError) and os.environ.get("CODEX_SANDBOX"):
+        emit({"ok": False, "error": "sandbox_write_blocked", "path": getattr(exc, "filename", None), "guide": SANDBOX_WRITE_GUIDE})
+        return  # 종료 코드는 파이썬이 정한다(처리 안 된 예외 = 1)
+    sys.__excepthook__(kind, exc, tb)
+
+
+sys.excepthook = _excepthook
+
+
 def fail(msg, code=2, **extra):
     obj = {"ok": False, "error": msg}
     obj.update(extra)

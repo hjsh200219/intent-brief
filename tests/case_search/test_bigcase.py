@@ -258,3 +258,23 @@ def test_stdout_is_utf8_on_cp949_console(tmp_path):
     env = {**os.environ, "PYTHONIOENCODING": "cp949", "CASE_SEARCH_HOME": str(tmp_path)}
     out = subprocess.run([sys.executable, str(script), "--help"], capture_output=True, env=env).stdout
     assert "빅케이스" in out.decode("utf-8")
+
+
+def test_dialog_cancel_vs_failure(monkeypatch):
+    """창을 못 띄운 것(Codex 샌드박스 등)을 「취소」로 보면 등록 절차가 끝나 버린다 — osascript 취소는 -128, 우리 PowerShell 창 취소는 3."""
+    import types
+
+    def run(rc, err):
+        return lambda *a, **k: types.SimpleNamespace(returncode=rc, stdout="" if isinstance(err, str) else b"", stderr=err)
+    monkeypatch.setattr(bigcase.subprocess, "run", run(1, "execution error: User canceled. (-128)"))
+    with pytest.raises(bigcase.BigcaseError, match="취소"):
+        bigcase._osascript_dialog("m", True)
+    monkeypatch.setattr(bigcase.subprocess, "run", run(1, "Operation not permitted"))
+    with pytest.raises(bigcase.BigcaseError, match="띄우지 못했습니다"):
+        bigcase._osascript_dialog("m", True)
+    monkeypatch.setattr(bigcase.subprocess, "run", run(3, b""))
+    with pytest.raises(bigcase.BigcaseError, match="취소"):
+        bigcase._windows_dialog("m", True, None)
+    monkeypatch.setattr(bigcase.subprocess, "run", run(1, b"Access denied"))
+    with pytest.raises(bigcase.BigcaseError, match="띄우지 못했습니다"):
+        bigcase._windows_dialog("m", True, None)

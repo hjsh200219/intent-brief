@@ -83,9 +83,10 @@ def test_hook_lines(home, tmp_path, capsys):
 
 
 def test_hook_never_fails(home, tmp_path, monkeypatch, capsys):
+    """세션 시작을 막지 않는다(exit 0) — 다만 「기한 없음」과 구별되게 점검 실패를 한 줄 알린다."""
     monkeypatch.setattr(DD, "scan", lambda **k: (_ for _ in ()).throw(RuntimeError("boom")))
     assert DD.main(["hook"]) == 0
-    assert capsys.readouterr().out == ""
+    assert "점검하지 못했습니다" in json.loads(capsys.readouterr().out)["hookSpecificOutput"]["additionalContext"]
 
 
 def test_roots_add_list_remove(home, tmp_path):

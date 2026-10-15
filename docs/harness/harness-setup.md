@@ -16,6 +16,7 @@
 - 명령(`commands/`)은 `source-command-<이름>` 스킬로 바뀌는데 `$ARGUMENTS` 를 쓰면 말없이 빠진다.
 - SessionStart 훅이 일반 텍스트를 내면 「Failed」로 버린다 — `hookSpecificOutput.additionalContext` JSON 으로 낸다(Claude Code 도 받는다). Windows Codex 는 `commandWindows` 를 PowerShell 5.1 로 돌리고 `${CLAUDE_PLUGIN_ROOT}` 를 미리 경로로 바꿔 넣는다 — 한글은 JSON `\uXXXX`(ASCII)로 낸다.
 - 플러그인 훅은 사용자가 신뢰를 승인해야 돈다(TUI 「Hooks need review」). 무인 시험은 격리 `CODEX_HOME` + `codex exec --dangerously-bypass-hook-trust` 로 한다.
+- 기본 샌드박스(workspace-write)는 네트워크를 막고(DNS 실패로 보인다 — `CODEX_SANDBOX_NETWORK_DISABLED=1` 로만 구별) 작업 폴더 쓰기를 막는다(`PermissionError`, `CODEX_SANDBOX=seatbelt`). `lawapi.NetworkBlocked`·`_paths._excepthook` 가 장애·트레이스백 대신 `network_blocked`·`sandbox_write_blocked` 로 알린다. 입력 창 실패는 취소와 구별한다(osascript 취소 `-128`, 우리 PowerShell 창 취소 종료 코드 3).
 
 ## 원격(법제처 Open API, `lawapi.py`)
 - 판례 정확 일치는 사건번호 파라미터 `nb` 로 찾는다(2026-10-15 실측: 2016다225353·2018다248626 모두 1건). `query` 는 사건명 검색이라 번호로는 안 걸리고, 본문 검색은 `search=2`.

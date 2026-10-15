@@ -207,6 +207,8 @@ class Checker:
             return self.check_law(c) if c["kind"] == "law" else self.check_case(c)
         except L.KeyInvalid as e:
             return {"status": "key_invalid", "detail": str(e)[:200]}
+        except L.NetworkBlocked:
+            raise  # 인용마다 「장애」 태그를 붙이지 않고 대조 전체를 멈춘다 — 네트워크를 허용하고 다시 실행하면 된다
         except L.Unavailable as e:
             return {"status": "outage", "detail": str(e)[:200]}
         except L.FormatChanged as e:
@@ -277,6 +279,8 @@ def main(argv=None):
             return P.emit({"ok": True, "key_source": src})
         except L.KeyInvalid as e:
             return P.emit({"ok": False, "error": "key_invalid", "detail": str(e), "guide": L.KEY_GUIDE}, 4)
+        except L.NetworkBlocked as e:
+            return P.emit({"ok": False, "error": "network_blocked", "detail": str(e)}, 7)
         except (L.Unavailable, L.FormatChanged) as e:
             return P.emit({"ok": False, "error": "outage", "detail": str(e), "note": "인용 대조만 장애 태그로 표시하고 계속합니다"}, 5)
     if a.cmd == "extract":
@@ -286,6 +290,8 @@ def main(argv=None):
             return P.emit(dict(ok=True, **run(a.draft, a.max_seconds)))
         except L.NoKey as e:
             return P.emit({"ok": False, "error": "no_key", "guide": str(e)}, 4)
+        except L.NetworkBlocked as e:
+            return P.emit({"ok": False, "error": "network_blocked", "detail": str(e)}, 7)
 
 
 if __name__ == "__main__":

@@ -165,6 +165,9 @@ def forget_credentials() -> list[str]:
 
 # ---------- 입력 ----------
 
+DIALOG_FAIL = "입력 창을 띄우지 못했습니다(%s) — Codex 샌드박스라면 권한 상승으로 다시 실행하거나, 자기 터미널에서 같은 명령을 직접 실행하십시오"
+
+
 def _osascript_dialog(message: str, hidden: bool) -> str:
     esc = message.replace("\\", "\\\\").replace('"', '\\"')
     script = (f'display dialog "{esc}" default answer "" '
@@ -173,7 +176,9 @@ def _osascript_dialog(message: str, hidden: bool) -> str:
               "text returned of result")
     r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=600, check=False)
     if r.returncode != 0:
-        raise BigcaseError("입력을 취소했습니다.")
+        if "-128" in (r.stderr or ""):  # 사람이 「취소」를 누름
+            raise BigcaseError("입력을 취소했습니다.")
+        raise BigcaseError(DIALOG_FAIL % ((r.stderr or "").strip()[:120] or f"osascript 종료 {r.returncode}"))
     return r.stdout.rstrip("\n")
 
 
@@ -183,14 +188,16 @@ def _windows_dialog(message: str, hidden: bool, username: str | None) -> str:
         user = (username or "").replace("'", "''")
         ps = ("[Console]::OutputEncoding=[Text.Encoding]::UTF8;"
               f"$c=Get-Credential -UserName '{user}' -Message '{msg}';"
-              "if(-not $c){exit 1};[Console]::Out.Write($c.GetNetworkCredential().Password)")
+              "if(-not $c){exit 3};[Console]::Out.Write($c.GetNetworkCredential().Password)")
     else:
         ps = ("[Console]::OutputEncoding=[Text.Encoding]::UTF8;Add-Type -AssemblyName Microsoft.VisualBasic;"
               f"$v=[Microsoft.VisualBasic.Interaction]::InputBox('{msg}','BigCase');"
-              "if(-not $v){exit 1};[Console]::Out.Write($v)")
+              "if(-not $v){exit 3};[Console]::Out.Write($v)")
     r = subprocess.run(["powershell.exe", "-NoProfile", "-Command", ps], capture_output=True, timeout=600, check=False)
-    if r.returncode != 0:
+    if r.returncode == 3:  # 우리 스크립트의 취소 코드
         raise BigcaseError("입력을 취소했습니다.")
+    if r.returncode != 0:
+        raise BigcaseError(DIALOG_FAIL % ((r.stderr or b"").decode("utf-8", "replace").strip()[:120] or f"PowerShell 종료 {r.returncode}"))
     return r.stdout.decode("utf-8", "replace")
 
 

@@ -202,8 +202,10 @@ def main(argv=None):
             if text:  # Claude Code·Codex 가 다 받는 형식 — Codex 는 일반 텍스트 출력을 실패로 버린다.
                 # ASCII(\\uXXXX)로 낸다: Windows Codex 는 훅을 PowerShell 5.1 로 돌려 한글 출력이 콘솔 코드 페이지로 다시 인코딩될 수 있다
                 sys.stdout.write(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": text}}) + "\n")
-        except Exception:  # noqa: BLE001 — 훅은 세션 시작을 막지 않는다
-            pass
+        except Exception as e:  # noqa: BLE001 — 훅은 세션 시작을 막지 않는다. 다만 「기한 없음」과 구별되게 알린다
+            text = ("[lawfirm] 기한·기일을 점검하지 못했습니다(%s) — `python3 \"%s\" scan` 으로 직접 확인하십시오\n"
+                    % (type(e).__name__, os.path.abspath(__file__)))
+            sys.stdout.write(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": text}}) + "\n")
         return 0
     try:
         if a.cmd == "scan":
