@@ -1,0 +1,348 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["scrapling[fetchers]>=0.4.11", "keyring>=25"]
+# ///
+"""{{TITLE}} API 클라이언트 — lawfirm site-api 스킬이 만든 파일(bigcase.py 와 같은 틀). 브라우저 없이 Scrapling 으로 부른다.
+
+실행: uv run <이 파일> <명령>
+  setup [--force]          아이디·비밀번호를 입력 창으로 받아 로그인 1회로 확인한 뒤 키체인에 저장(채팅·명령행 인자로 받지 않는다)
+  status                   등록 상태(값은 출력하지 않음 · 네트워크 안 씀)
+  login                    새로 로그인(토큰·쿠키 값은 출력하지 않음)
+  get <경로> [--param k=v ...] · post <경로> [--json '{...}']
+                           API 아래 요청, JSON 출력. API 호스트 밖 절대 주소는 거부한다(인증 정보가 붙으므로)
+  forget                   키체인 항목·설정·세션 파일 삭제
+
+이용 범위: 사이트 이용약관·robots.txt 가 허용하는 범위에서, 본인 계정으로, 사람이 화면에서 찾는 정도의 빈도로만 쓴다.
+요청 사이에 최소 MIN_INTERVAL 초를 둔다. 대량 수집·재배포에 쓰지 않는다.
+"""
+from __future__ import annotations
+
+import argparse
+import base64
+import contextlib
+import getpass
+import json
+import logging
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+from urllib.parse import urlparse, urlunparse
+
+SLUG = {{SLUG}}
+TITLE = {{TITLE}}
+API = {{API}}
+AUTH = {{AUTH}}  # bearer-login · cookie-login · none
+LOGIN_PATH = {{LOGIN_PATH}}
+ID_FIELD = {{ID_FIELD}}
+PW_FIELD = {{PW_FIELD}}
+TOKEN_FIELD = {{TOKEN_FIELD}}  # 응답 JSON 안 위치, 점으로 구분(예: data.accessToken)
+KEYRING_SERVICE = {{KEYRING}}
+MIN_INTERVAL = 1.0
+
+
+class SiteError(RuntimeError):
+    pass
+
+
+# ---------- 파일 ----------
+
+def home() -> Path:
+    env = os.environ.get("LAWFIRM_SITE_HOME")
+    if env:
+        return Path(env) / SLUG
+    if os.name == "nt":
+        base = Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local") / "intent-brief"
+    else:
+        base = Path.home() / ".intent-brief"
+    return base / "site-api" / SLUG
+
+
+def config_file() -> Path:
+    return home() / "config.json"
+
+
+def session_file() -> Path:
+    return home() / "session.json"
+
+
+def write_private(path: Path, payload: dict) -> None:
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, path)
+    os.chmod(path, 0o600)
+
+
+def read_json(path: Path) -> dict:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, ValueError):
+        return {}
+
+
+# ---------- 자격증명 ----------
+
+def keyring_backend():
+    import keyring
+    kr = keyring.get_keyring()
+    name = f"{type(kr).__module__}.{type(kr).__name__}"
+    if "fail" in name or "null" in name or getattr(kr, "priority", 1) <= 0:
+        raise SiteError(f"이 컴퓨터에서 쓸 수 있는 키체인이 없습니다({name}).")
+    return kr
+
+
+def configured_id() -> str | None:
+    return read_json(config_file()).get("id")
+
+
+def stored_password(user: str) -> str | None:
+    return keyring_backend().get_password(KEYRING_SERVICE, user)
+
+
+def store_credentials(user: str, password: str) -> None:
+    keyring_backend().set_password(KEYRING_SERVICE, user, password)
+    write_private(config_file(), {"id": user, "saved_at": int(time.time())})
+
+
+def forget_credentials() -> list[str]:
+    done = []
+    user = configured_id()
+    if user:
+        with contextlib.suppress(Exception):
+            keyring_backend().delete_password(KEYRING_SERVICE, user)
+            done.append(f"키체인 항목({KEYRING_SERVICE})")
+    for p in (config_file(), session_file()):
+        if p.exists():
+            p.unlink()
+            done.append(str(p))
+    return done
+
+
+# ---------- 입력 ----------
+
+def ask(message: str, hidden: bool) -> str:
+    """터미널이면 getpass/input, 아니면 OS 입력 창(macOS osascript · Windows PowerShell)."""
+    if sys.stdin.isatty():
+        return getpass.getpass(f"{message}: ") if hidden else input(f"{message}: ")
+    if sys.platform == "darwin":
+        esc = message.replace("\\", "\\\\").replace('"', '\\"')
+        title = TITLE.replace("\\", "\\\\").replace('"', '\\"')
+        script = (f'display dialog "{esc}" default answer "" {"with hidden answer " if hidden else ""}'
+                  f'with title "{title}" buttons {{"취소", "확인"}} default button "확인" cancel button "취소"\n'
+                  "text returned of result")
+        r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=600, check=False)
+        if r.returncode != 0:
+            raise SiteError("입력을 취소했습니다.")
+        return r.stdout.rstrip("\n")
+    if os.name == "nt":
+        msg = message.replace("'", "''")
+        if hidden:
+            ps = ("[Console]::OutputEncoding=[Text.Encoding]::UTF8;"
+                  f"$c=Get-Credential -Message '{msg}';if(-not $c){{exit 1}};"
+                  "[Console]::Out.Write($c.GetNetworkCredential().Password)")
+        else:
+            ps = ("[Console]::OutputEncoding=[Text.Encoding]::UTF8;Add-Type -AssemblyName Microsoft.VisualBasic;"
+                  f"$v=[Microsoft.VisualBasic.Interaction]::InputBox('{msg}','{SLUG}');if(-not $v){{exit 1}};[Console]::Out.Write($v)")
+        r = subprocess.run(["powershell.exe", "-NoProfile", "-Command", ps], capture_output=True, timeout=600, check=False)
+        if r.returncode != 0:
+            raise SiteError("입력을 취소했습니다.")
+        return r.stdout.decode("utf-8", "replace")
+    raise SiteError("입력 창을 띄울 수 없습니다. 터미널에서 직접 `uv run <이 파일> setup` 을 실행하세요.")
+
+
+# ---------- 클라이언트 ----------
+
+def _api_url(path: str) -> str:
+    """경로 → API 주소. 인증 정보가 붙으므로 API 와 같은 https 호스트·포트가 아닌 절대 주소는 거부한다."""
+    u, api = urlparse(path.strip()), urlparse(API)
+    if not u.scheme:
+        return f"{API}/{path.strip().lstrip('/')}"
+    if (u.scheme.lower(), u.hostname, u.port, u.username) != (api.scheme, api.hostname, api.port, None):
+        raise SiteError(f"{api.scheme}://{api.netloc} 밖 주소에는 요청을 보내지 않습니다: {u.scheme}://{u.netloc}")
+    return urlunparse(u._replace(scheme=api.scheme, netloc=api.netloc))
+
+
+def _jwt_exp(token: str) -> int:
+    try:
+        payload = token.split(".")[1]
+        payload += "=" * (-len(payload) % 4)
+        return int(json.loads(base64.urlsafe_b64decode(payload)).get("exp", 0))
+    except Exception:  # noqa: BLE001 — JWT 가 아니면 만료 시각을 모른다
+        return 0
+
+
+def _dig(data, dotted: str):
+    for key in dotted.split("."):
+        if not isinstance(data, dict):
+            return None
+        data = data.get(key)
+    return data
+
+
+def _json(resp):
+    try:
+        return json.loads(resp.body)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _cookies(resp) -> dict:
+    c = getattr(resp, "cookies", None) or {}
+    if isinstance(c, dict):
+        return {str(k): str(v) for k, v in c.items()}
+    return {str(x["name"]): str(x["value"]) for x in c if isinstance(x, dict) and "name" in x}
+
+
+class Client:
+    def __init__(self):
+        from scrapling.fetchers import FetcherSession
+        logging.getLogger("scrapling").setLevel(logging.WARNING)
+        self._fs = FetcherSession(impersonate="chrome", stealthy_headers=False, timeout=20, retries=1)
+        self.http = self._fs.__enter__()
+        self.session = read_json(session_file())
+        self._last = 0.0
+
+    def close(self):
+        self._fs.__exit__(None, None, None)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
+    def _wait(self):
+        gap = time.time() - self._last
+        if gap < MIN_INTERVAL:
+            time.sleep(MIN_INTERVAL - gap)
+        self._last = time.time()
+
+    def login(self, user: str | None = None, password: str | None = None, save: bool = True) -> dict:
+        if AUTH == "none":
+            return {}
+        user = user or configured_id()
+        if not user:
+            raise SiteError("등록된 계정이 없습니다. 먼저 `setup` 을 실행하세요.")
+        password = password or stored_password(user)
+        if not password:
+            raise SiteError("비밀번호가 키체인에 없습니다. `setup --force` 로 다시 등록하세요.")
+        self._wait()
+        r = self.http.post(_api_url(LOGIN_PATH), json={ID_FIELD: user, PW_FIELD: password})
+        data = _json(r)
+        if r.status >= 400:
+            raise SiteError(f"로그인 실패 HTTP {r.status}")
+        sess = {"id": user, "loggedInAt": int(time.time())}
+        if AUTH == "bearer-login":
+            token = _dig(data, TOKEN_FIELD)
+            if not token:
+                raise SiteError(f"로그인 응답에 {TOKEN_FIELD} 가 없습니다 — TOKEN_FIELD 를 응답 구조에 맞게 고치세요.")
+            sess["token"] = token
+        else:
+            sess["cookies"] = _cookies(r)
+            if not sess["cookies"]:
+                raise SiteError("로그인 응답에 쿠키가 없습니다 — AUTH 를 bearer-login 으로 바꾸거나 로그인 경로를 확인하세요.")
+        self.session = sess
+        if save:
+            write_private(session_file(), sess)
+        return sess
+
+    def _auth_headers(self) -> dict:
+        if AUTH == "none":
+            return {}
+        if self.session.get("id") != configured_id():
+            self.session = {}  # 다른 계정의 세션은 쓰지 않는다
+        if AUTH == "bearer-login":
+            tok = self.session.get("token")
+            exp = _jwt_exp(tok) if tok else 0
+            if not tok or (exp and exp < time.time() + 60):
+                tok = self.login()["token"]
+            return {"Authorization": f"Bearer {tok}"}
+        if not self.session.get("cookies"):
+            self.login()
+        return {"Cookie": "; ".join(f"{k}={v}" for k, v in self.session["cookies"].items())}
+
+    def request(self, method: str, path: str, **kw):
+        url = _api_url(path)
+        fn = getattr(self.http, method.lower())
+        extra = kw.pop("headers", {})
+        for attempt in range(2):
+            self._wait()
+            r = fn(url, headers={**extra, **self._auth_headers()}, **kw)
+            if r.status in (401, 403) and AUTH != "none" and attempt == 0:
+                self.session = {"id": configured_id()}  # 만료 판정 → 다시 로그인해 1회 재시도
+                continue
+            break
+        data = _json(r)
+        if r.status >= 400:
+            raise SiteError(f"{method.upper()} {path} HTTP {r.status}")
+        return data if data is not None else r.body.decode("utf-8", "replace")
+
+
+# ---------- 명령 ----------
+
+def emit(obj) -> None:
+    print(json.dumps(obj, ensure_ascii=False, indent=1))
+
+
+def main() -> int:
+    for s in (sys.stdout, sys.stderr):
+        if hasattr(s, "reconfigure"):
+            s.reconfigure(encoding="utf-8")
+    ap = argparse.ArgumentParser(description=f"{TITLE} API 클라이언트")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("setup").add_argument("--force", action="store_true")
+    sub.add_parser("status")
+    sub.add_parser("login")
+    g = sub.add_parser("get")
+    g.add_argument("path")
+    g.add_argument("--param", action="append", default=[])
+    p = sub.add_parser("post")
+    p.add_argument("path")
+    p.add_argument("--json", default="{}")
+    sub.add_parser("forget")
+    a = ap.parse_args()
+    try:
+        if a.cmd == "status":
+            emit({"ok": True, "site": TITLE, "api": API, "auth": AUTH, "configured": bool(configured_id()) or AUTH == "none",
+                  "session_saved": session_file().exists()})
+            return 0
+        if a.cmd == "forget":
+            emit({"ok": True, "removed": forget_credentials()})
+            return 0
+        if a.cmd == "setup":
+            if AUTH == "none":
+                emit({"ok": True, "message": "로그인이 필요 없는 사이트입니다."})
+                return 0
+            if configured_id() and not a.force:
+                emit({"ok": True, "message": "이미 등록돼 있습니다(다시 하려면 --force)."})
+                return 0
+            user = ask(f"{TITLE} 아이디", hidden=False).strip()
+            pw = ask(f"{TITLE} 비밀번호", hidden=True)
+            with Client() as c:
+                c.login(user, pw, save=False)
+            store_credentials(user, pw)
+            emit({"ok": True, "message": "로그인 확인 후 저장했습니다(비밀번호는 키체인)."})
+            return 0
+        with Client() as c:
+            if a.cmd == "login":
+                s = c.login()
+                write_private(session_file(), s)
+                emit({"ok": True, "id": s.get("id"), "loggedInAt": s.get("loggedInAt")})
+            elif a.cmd == "get":
+                params = dict(x.split("=", 1) for x in a.param)
+                emit({"ok": True, "data": c.request("get", a.path, params=params)})
+            else:
+                emit({"ok": True, "data": c.request("post", a.path, json=json.loads(a.json))})
+        return 0
+    except (SiteError, ValueError) as e:
+        emit({"ok": False, "error": str(e)})
+        return 3
+
+
+if __name__ == "__main__":
+    sys.exit(main())
