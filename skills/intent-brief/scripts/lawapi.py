@@ -13,6 +13,8 @@ MCP 를 거치지 않는다. 표준 라이브러리만 쓴다.
   lawapi.py prec <판례일련번호>
   lawapi.py term <법령용어>
   lawapi.py search <target> <검색어> [--display 20] [--page 1] [--fulltext]   expc(법령해석례)·detc(헌재결정) 등
+  lawapi.py form-search <검색어> [--admin] [--kind 별표|서식] [--law]   법령(--admin 이면 행정규칙) 별표·서식 목록
+  lawapi.py form-get <파일번호> --out <폴더>                             서식 파일(hwp·pdf) 내려받기 — 키 불필요
   lawapi.py detail <target> <ID>
 """
 import argparse
@@ -376,6 +378,92 @@ def detail(client, target, item_id):
     return client.get("lawService.do", target=_target(target), ID=item_id)
 
 
+# ── 별표·서식 ─────────────────────────────────────────────────
+# 법령(licbyl)·행정규칙(admbyl)의 별표·서식 목록과 파일 내려받기. 파일은 키 없이 law.go.kr 에서 받는다(2026-10-15 실측).
+FORM_URL = "https://www.law.go.kr/LSW/flDownload.do?flSeq="
+FORM_KIND = {"별표": 1, "서식": 2}
+_BAD_NAME = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
+
+
+def _form_number(code, kind):
+    m = re.fullmatch(r"(\d{4})(\d{2})", code or "")
+    if not m:
+        return None
+    n, sub = int(m.group(1)), int(m.group(2))
+    if kind == "서식":
+        return "별지 제%d호%s" % (n, "의%d" % sub if sub else "")
+    return "별표 %d%s" % (n, "의%d" % sub if sub else "")
+
+
+def _file_seq(link):
+    m = re.search(r"flSeq=(\d+)", link or "")
+    return m.group(1) if m else None
+
+
+def search_forms(client, query, admin=False, kind=None, by_law=False, display=20, page=1):
+    """별표·서식 목록. admin=True 면 행정규칙(고시·예규·훈령), by_law=True 면 query 를 법령명으로 찾는다."""
+    params = {"target": "admbyl" if admin else "licbyl", "query": query, "display": display, "page": page}
+    if by_law:
+        params["search"] = 2
+    if kind:
+        if kind not in FORM_KIND:
+            raise P.BriefError("--kind 는 별표 또는 서식입니다")
+        params["knd"] = FORM_KIND[kind]
+    obj = client.get("lawSearch.do", **params)
+    root = obj.get("admRulBylSearch" if admin else "licBylSearch")
+    if not isinstance(root, dict):
+        raise FormatChanged("별표·서식 목록 없음")
+    items = []
+    for it in _list(root.get("admrulbyl" if admin else "licbyl")):
+        k = it.get("별표종류")
+        items.append({"id": it.get("별표일련번호"), "name": (it.get("별표명") or "").strip(), "kind": k,
+                      "number": _form_number(it.get("별표번호"), k),
+                      "source": it.get("관련행정규칙명") if admin else it.get("관련법령명"),
+                      "ministry": it.get("소관부처명"), "date": it.get("발령일자") if admin else it.get("공포일자"),
+                      "hwp": _file_seq(it.get("별표서식파일링크")), "pdf": _file_seq(it.get("별표서식PDF파일링크"))})
+    try:
+        total = int(root.get("totalCnt") or 0)
+    except ValueError:
+        total = len(items)
+    return {"total": total, "page": page, "items": items}
+
+
+def _download_form(seq):
+    """(파일 이름, content-type, 내용). 고정 주소 FORM_URL 로만 받는다."""
+    req = urllib.request.Request(FORM_URL + seq, headers={"User-Agent": "lawfirm-lawapi"})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            body, ctype = r.read(), (r.headers.get("Content-Type") or "").split(";")[0].strip()
+            disp = r.headers.get("Content-Disposition") or ""
+    except urllib.error.HTTPError as e:
+        raise Unavailable("서식 파일 HTTP %d" % e.code)
+    except (urllib.error.URLError, socket.timeout, ConnectionError) as e:
+        raise Unavailable("서식 파일 연결 실패: %s" % e.__class__.__name__)
+    m = re.search(r"filename\*?=(?:UTF-8'')?\"?([^\";]+)", disp)
+    name = urllib.parse.unquote(m.group(1)) if m else ""
+    return name, ctype, body
+
+
+def get_form(seq, out_dir):
+    """서식 파일을 out_dir 에 저장 — 같은 이름이 있으면 _2, _3 … 을 붙인다(덮어쓰지 않음)."""
+    seq = str(seq).strip()
+    if not seq.isdigit():
+        raise P.BriefError("파일 번호는 숫자입니다(form-search 결과의 hwp·pdf 값)")
+    name, ctype, body = _download_form(seq)
+    ext = {"application/pdf": ".pdf", "application/hwp": ".hwp", "application/x-hwp": ".hwp"}.get(ctype, "")
+    base = _BAD_NAME.sub("_", os.path.basename(name.replace("\\", "/"))).strip(" .") or "서식_%s%s" % (seq, ext)
+    stem, suffix = os.path.splitext(base)
+    suffix = suffix or ext
+    os.makedirs(out_dir, exist_ok=True)
+    path, n = os.path.join(out_dir, stem + suffix), 1
+    while os.path.exists(path):
+        n += 1
+        path = os.path.join(out_dir, "%s_%d%s" % (stem, n, suffix))
+    with open(path, "xb") as f:
+        f.write(body)
+    return {"path": path, "bytes": len(body), "content_type": ctype, "source": FORM_URL + seq}
+
+
 # ── CLI ───────────────────────────────────────────────────────
 def _art(s):
     m = re.fullmatch(r"(\d+)(?:-(\d+))?", s or "")
@@ -402,6 +490,10 @@ def main(argv=None):
     s.add_argument("--display", type=int, default=20); s.add_argument("--page", type=int, default=1)
     s.add_argument("--fulltext", action="store_true")
     s = sub.add_parser("detail"); s.add_argument("target"); s.add_argument("item_id")
+    s = sub.add_parser("form-search"); s.add_argument("query"); s.add_argument("--admin", action="store_true")
+    s.add_argument("--kind", choices=sorted(FORM_KIND)); s.add_argument("--law", action="store_true")
+    s.add_argument("--display", type=int, default=20); s.add_argument("--page", type=int, default=1)
+    s = sub.add_parser("form-get"); s.add_argument("file_seq"); s.add_argument("--out", required=True)
     a = ap.parse_args(argv)
     try:
         if a.cmd == "key":
@@ -424,7 +516,12 @@ def main(argv=None):
                     find_prec_exact(Client(oc=oc), "2016다225353")  # 키·IP 검증(실패면 저장하지 않음)
                 return P.emit({"ok": True, "saved": save_key(oc), "checked": not a.no_check})
             return P.emit({"ok": True, "cleared": clear_key()})
+        if a.cmd == "form-get":  # 파일은 키 없이 받는다
+            return P.emit(dict(get_form(a.file_seq, a.out), ok=True))
         c = Client()
+        if a.cmd == "form-search":
+            return P.emit(dict(search_forms(c, a.query, admin=a.admin, kind=a.kind, by_law=a.law,
+                                            display=a.display, page=a.page), ok=True))
         if a.cmd == "law":
             law = search_law(c, a.name)
             if not law:

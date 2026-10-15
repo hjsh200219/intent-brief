@@ -1,6 +1,6 @@
 ---
 name: case-search
-description: 판례·법령 검색 — 법제처(공식 원문: 법령·조문·판례·헌재결정·법령해석례·법령용어), 빅케이스(bigcase.ai: 판결문 전문·하급심·유사 판례·서술문 검색·결정례/행정심판), 해외 판례(미국 CourtListener·독일 OpenLegalData)를 한곳에서 찾는다. 빅케이스 계정이 없으면 법제처·해외 판례만 쓴다. 트리거 — "/lawfirm:case-search", "판례 검색", "판례 찾아줘", "사건번호 찾아줘", "판결문 전문", "판결 이유", "법제처", "법령 찾아줘", "조문", "몇 조", "헌재 결정", "헌법재판소", "법령해석", "법률용어", "빅케이스", "bigcase", "유사 판례", "비슷한 판례", "행정심판", "결정례", "미국 판례", "독일 판례", "해외 판례", "US case", "BGH".
+description: 판례·법령 검색 — 법제처(공식 원문: 법령·조문·판례·헌재결정·법령해석례·법령용어·별표·서식), 빅케이스(bigcase.ai: 판결문 전문·하급심·유사 판례·서술문 검색·결정례/행정심판), 해외 판례(미국 CourtListener·독일 OpenLegalData)를 한곳에서 찾는다. 빅케이스 계정이 없으면 법제처·해외 판례만 쓴다. 트리거 — "/lawfirm:case-search", "판례 검색", "판례 찾아줘", "사건번호 찾아줘", "판결문 전문", "판결 이유", "법제처", "법령 찾아줘", "조문", "몇 조", "헌재 결정", "헌법재판소", "법령해석", "법률용어", "빅케이스", "bigcase", "유사 판례", "비슷한 판례", "행정심판", "결정례", "별표", "서식", "표준계약서 양식", "법정 서식", "미국 판례", "독일 판례", "해외 판례", "US case", "BGH".
 argument-hint: "[검색어 | 사건번호 | 법령명 제N조 | us <검색어> | de <검색어>]"
 allowed-tools: Bash(uv run:*), Bash(python3:*), Bash(python:*), Bash(py:*)
 ---
@@ -37,6 +37,7 @@ allowed-tools: Bash(uv run:*), Bash(python3:*), Bash(python:*), Bash(py:*)
 | 행정심판 재결·위원회 결정례 | `BC decisions <행정심판\|결정례> <검색어>` → `BC decision <종류> <id>` | — |
 | 행정규칙 | `LAW search admrul "<검색어>"` → `LAW detail admrul <ID>` | — |
 | 법령용어 | `LAW term "소멸시효"` | — |
+| 법정 서식·별표(표준계약서·신청서 양식 등) | `LAW form-search "근로계약서" --kind 서식` (법령명으로는 `--law`, 고시·예규는 `--admin`) → `LAW form-get <hwp 또는 pdf 번호> --out <사건 폴더>` | 법제처에 없는 부처 누리집 양식(예: 주택임대차표준계약서)은 출처 URL 을 안내 |
 | 미국 판례 | `FX us-search "<영문 검색어>" [--court scotus] [--after YYYY-MM-DD]` → `FX us-opinion <opinion_id>` | 본문은 CourtListener 토큰 필요(`/lawfirm:law-key-setup us`) — 없으면 검색 결과의 판례명·인용·URL 까지만 |
 | 독일 판례 | `FX de-search "<독일어 검색어>" [--court BGH] [--level Bundesgericht]` → `FX de-case <id>` | — |
 
@@ -75,6 +76,8 @@ allowed-tools: Bash(uv run:*), Bash(python3:*), Bash(python:*), Bash(py:*)
 | `LAW prec <prec_id>` | 판례 상세(판시사항·판결요지·참조조문·전문) |
 | `LAW search <expc\|detc\|admrul> <검색어>` · `LAW detail <expc\|detc\|admrul> <ID>` | 법령해석례·헌재결정·행정규칙 목록 / 원문 |
 | `LAW term <용어>` | 법령용어 정의 |
+| `LAW form-search <검색어> [--admin] [--kind 별표\|서식] [--law] [--display N]` | 법령(`--admin` 이면 행정규칙) 별표·서식 목록 — 번호(「별지 제3호」)·근거 법령·공포일·파일 번호(hwp·pdf) |
+| `LAW form-get <파일 번호> --out <폴더>` | 서식 파일 내려받기(키 불필요) — 같은 이름이 있으면 `_2` 를 붙이고 덮어쓰지 않는다 |
 | `FX us-search <검색어> [--court C] [--after D] [--before D] [--cursor C]` | 미국 판례 검색(익명) — 판례명·법원·선고일·인용·opinion id·URL, 다음 페이지는 `next_cursor` |
 | `FX us-opinion <opinion_id> [--offset N]` | 미국 판결문 본문(영어) — CourtListener 토큰 필요 |
 | `FX de-search <검색어> [--court BGH] [--level Bundesgericht] [--page N]` | 독일 판례 본문 검색(익명) — 법원·선고일·결정 종류·발췌·URL |

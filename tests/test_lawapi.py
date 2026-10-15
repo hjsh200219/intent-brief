@@ -270,3 +270,78 @@ def test_search_law_pages_until_exact_name():
     assert hit and hit["name"] == "상법"
     assert all(c["display"] >= 20 for c in f.calls)
     assert L.search_law(f, "없는법") is None and len(f.calls) <= 6
+
+
+# ── 별표·서식 ─────────────────────────────────────────────────
+LICBYL = {"licBylSearch": {"totalCnt": "1", "licbyl": {
+    "관련법령명": "농어업고용인력 지원 특별법 시행규칙", "소관부처명": "농림축산식품부", "별표종류": "서식", "별표번호": "000300",
+    "별표명": "표준 계절근로계약서(농업, 어업 분야)", "별표일련번호": "17979509", "공포일자": "20260213",
+    "별표서식파일링크": "/LSW/flDownload.do?flSeq=161650125", "별표서식PDF파일링크": "/LSW/flDownload.do?flSeq=161650127",
+    "별표법령상세링크": "/DRF/lawService.do?OC=secret&target=licbyl&ID=17979509"}}}
+ADMBYL = {"admRulBylSearch": {"totalCnt": "1", "admrulbyl": [{
+    "관련행정규칙명": "기간제 및 공무직 근로자 관리규정", "소관부처명": "대법원", "행정규칙종류": "행정예규", "별표종류": "서식",
+    "별표번호": "000300", "별표명": "[ 별지 제3호 서식 ] 공무직 및 기간제 근로자 표준 근로계약서", "별표일련번호": "3282097",
+    "발령일자": "20260728", "별표서식파일링크": "/LSW/flDownload.do?flSeq=167837705"}]}}
+
+
+class FakeByl:
+    def __init__(self, body):
+        self.body, self.calls = body, []
+
+    def get(self, path, **kw):
+        self.calls.append((path, kw))
+        return self.body
+
+
+def test_form_search_law_forms_normalized():
+    f = FakeByl(LICBYL)
+    out = L.search_forms(f, "근로계약서", kind="서식")
+    assert f.calls[0] == ("lawSearch.do", {"target": "licbyl", "query": "근로계약서", "display": 20, "page": 1, "knd": 2})
+    it = out["items"][0]
+    assert it == {"id": "17979509", "name": "표준 계절근로계약서(농업, 어업 분야)", "kind": "서식", "number": "별지 제3호",
+                  "source": "농어업고용인력 지원 특별법 시행규칙", "ministry": "농림축산식품부", "date": "20260213",
+                  "hwp": "161650125", "pdf": "161650127"}
+    assert out["total"] == 1 and "secret" not in json.dumps(out, ensure_ascii=False)
+
+
+def test_form_search_admin_and_by_law_name():
+    f = FakeByl(ADMBYL)
+    out = L.search_forms(f, "기간제 및 공무직 근로자 관리규정", admin=True, by_law=True, kind="별표")
+    path, kw = f.calls[0]
+    assert kw["target"] == "admbyl" and kw["search"] == 2 and kw["knd"] == 1
+    it = out["items"][0]
+    assert it["source"] == "기간제 및 공무직 근로자 관리규정" and it["hwp"] == "167837705" and it["pdf"] is None and it["number"] == "별지 제3호"
+
+
+def test_form_number_formats():
+    assert L._form_number("000300", "서식") == "별지 제3호"
+    assert L._form_number("000102", "별표") == "별표 1의2"
+    assert L._form_number("", "서식") is None
+
+
+def test_form_get_saves_without_overwrite(tmp_path, monkeypatch):
+    seen = []
+
+    def fake(seq):
+        seen.append(seq)
+        return "[별지 제3호서식] 표준 계약서.hwp", "application/hwp", b"HWP"
+    monkeypatch.setattr(L, "_download_form", fake)
+    a = L.get_form("161650125", str(tmp_path))
+    b = L.get_form("161650125", str(tmp_path))
+    assert os.path.basename(a["path"]) == "[별지 제3호서식] 표준 계약서.hwp" and a["bytes"] == 3
+    assert b["path"] != a["path"] and b["path"].endswith("_2.hwp")
+    with pytest.raises(P.BriefError):
+        L.get_form("../etc", str(tmp_path))
+    assert seen == ["161650125", "161650125"]
+
+
+def test_form_filename_sanitized(tmp_path, monkeypatch):
+    monkeypatch.setattr(L, "_download_form", lambda seq: ("../../evil:name?.pdf", "application/pdf", b"%PDF"))
+    out = L.get_form("1", str(tmp_path))
+    assert os.path.dirname(out["path"]) == str(tmp_path) and "/" not in os.path.basename(out["path"]).replace(os.sep, "")
+    assert out["path"].endswith(".pdf") and ":" not in os.path.basename(out["path"])
+
+
+def test_form_download_host_is_fixed():
+    src = open(L.__file__, encoding="utf-8").read()
+    assert 'FORM_URL = "https://www.law.go.kr/LSW/flDownload.do?flSeq="' in src

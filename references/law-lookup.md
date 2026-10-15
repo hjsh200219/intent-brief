@@ -22,6 +22,8 @@ MCP 를 쓰지 않는다. 법제처 Open API 를 직접 부르는 스크립트 `
 | 법령해석례 | `"$PY" "$S/lawapi.py" search expc "<검색어>"` → `"$PY" "$S/lawapi.py" detail expc <ID>` |
 | 헌법재판소 결정 | `"$PY" "$S/lawapi.py" search detc "<검색어>"` → `"$PY" "$S/lawapi.py" detail detc <ID>` |
 | 법령용어 | `"$PY" "$S/lawapi.py" term "소멸시효"` |
+| 별표·서식 목록(법령 / 행정규칙) | `"$PY" "$S/lawapi.py" form-search "표준계약서" --kind 서식` / `… --admin` · 법령명으로 `--law` |
+| 서식 파일 내려받기(hwp·pdf) | `"$PY" "$S/lawapi.py" form-get <파일 번호> --out <사건 폴더>` |
 | 빅케이스 판례 검색(있을 때) | `"$PY" "$S/casesearch.py" search "<검색어>"` |
 | 빅케이스 판결 전문(있을 때) | `"$PY" "$S/casesearch.py" case 대법원 2014다26187` |
 
