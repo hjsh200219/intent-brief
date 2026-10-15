@@ -81,3 +81,22 @@ def test_no_inline_json_in_shell():
 
 def test_cta_shared_file_present():
     assert os.path.exists(os.path.join(ROOT, "references", "cta-config.md"))
+
+
+DRAFT_STEP = {"certified-letter": "### 3단계: 내용증명 구성", "complaint-drafter": "### 3단계: 고소장 구성",
+              "criminal-procedure-simulator": "### 2단계 — 인터랙티브 위젯 생성", "criminal-settlement": "## Step 2: 합의서 생성",
+              "fact-confirmation": "## Step 2: 사실확인서 구성", "sentencing-predictor": "## Step 5: 양형 예측 보고서 작성"}
+
+
+@pytest.mark.parametrize("name", EMBEDDED)
+def test_outline_approval_before_drafting(name):
+    """본문을 쓰기 전에 구성안(목표·쟁점+증거·목차·확인 필요·인용 예정)을 보여 주고 승인받는다."""
+    text = read(os.path.join(SKILLS, name, "SKILL.md"))
+    head = "구성안 → 승인 → 작성"
+    assert head in text, name
+    sec = text[text.index(head):]
+    sec = sec[:sec.index("\n#", 1)] if "\n#" in sec[1:] else sec
+    for word in ("목표", "쟁점", "증거", "목차", "확인 필요", "인용 예정", "승인", "바로 작성", "outline-approval.md"):
+        assert word in sec, (name, word)
+    assert text.index(head) < text.index(DRAFT_STEP[name]), name
+    assert os.path.isfile(os.path.join(ROOT, "references", "outline-approval.md"))
