@@ -5,3 +5,6 @@ tests/_out/
 .DS_Store
 .omc/
 _workspace/
+docs/case-search/lbox/state/
+docs/case-search/lbox/captures/
+.coverage
