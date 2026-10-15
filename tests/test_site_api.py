@@ -92,7 +92,7 @@ def test_default_output_outside_plugin(monkeypatch):
 
 
 @pytest.mark.parametrize("name,allowed", [("extract.py", {"html", "json", "re", "sys", "urllib", "argparse"}),
-                                          ("scaffold.py", {"argparse", "json", "os", "re", "sys", "urllib"})])
+                                          ("scaffold.py", {"argparse", "json", "os", "re", "shlex", "sys", "urllib"})])
 def test_stdlib_scripts(name, allowed):
     tree = ast.parse(open(os.path.join(SKILL, "scripts", name), encoding="utf-8").read(), feature_version=(3, 9))
     mods = {a.name.split(".")[0] for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names}
@@ -116,3 +116,31 @@ def test_skill_doc():
     assert "AskUserQuestion" not in text
     for p in re.findall(r"\$\{CLAUDE_PLUGIN_ROOT\}/([\w./-]+\.py)", text):
         assert os.path.isfile(os.path.join(ROOT, p)), p
+
+
+def test_scaffold_single_pass_no_code_injection(tmp_path):
+    """값 안의 {{자리}} 를 다시 치환하지 않는다 — 제목에 자리표시자, 필드에 코드를 넣어도 생성 파일에 코드가 생기지 않는다."""
+    out = S.scaffold("inj", "https://x.example.kr/api", title="{{ID_FIELD}}", out_dir=str(tmp_path))
+    src = open(out["path"], encoding="utf-8").read()
+    assert 'TITLE = "{{ID_FIELD}}"' in src
+    for field in ("+exec(chr(111))+", "a b", 'x"y', ""):
+        with pytest.raises(ValueError):
+            S.scaffold("inj", "https://x.example.kr/api", id_field=field, out_dir=str(tmp_path))
+    for lp in ("/login;rm", "login", "/a b"):
+        with pytest.raises(ValueError):
+            S.scaffold("inj", "https://x.example.kr/api", login_path=lp, out_dir=str(tmp_path))
+    with pytest.raises(ValueError):
+        S.scaffold("inj", "https://x.example.kr/api", title="a\nb", out_dir=str(tmp_path))
+
+
+def test_scaffold_next_commands_are_quoted(tmp_path):
+    d = tmp_path / "a b;echo hi"
+    out = S.scaffold("qq", "https://x.example.kr/api", out_dir=str(d))
+    assert all(("'" + out["path"] + "'") in c for c in out["next"] if c)
+
+
+def test_discover_keeps_query_names_only():
+    sys.path.insert(0, os.path.join(SKILL, "scripts"))
+    import discover as DV
+    assert DV.query_names("q=%ED%99%8D&token=abc123&page=2") == ["page", "q", "token"]
+    assert DV.query_names("") == []

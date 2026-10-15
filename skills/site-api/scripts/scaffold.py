@@ -8,6 +8,7 @@ import argparse
 import json
 import os
 import re
+import shlex
 import sys
 from urllib.parse import urlparse
 
@@ -15,6 +16,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE = os.path.join(HERE, "..", "templates", "client.py.tmpl")
 AUTH_MODES = ("bearer-login", "cookie-login", "none")
 SLUG_RE = re.compile(r"^[a-z][a-z0-9-]{1,30}$")
+FIELD_RE = re.compile(r"^[A-Za-z_][\w.-]{0,63}$")
+PATH_RE = re.compile(r"^/[\w./~%-]{0,200}$")
+PLACEHOLDER = re.compile(r"\{\{([A-Z_]+)\}\}")
 
 
 def default_out_dir():
@@ -45,17 +49,23 @@ def scaffold(slug, base, auth="bearer-login", login_path="/auth/login", id_field
     if auth not in AUTH_MODES:
         raise ValueError("인증 방식은 %s 중 하나입니다: %s" % ("·".join(AUTH_MODES), auth))
     api = _check_base(base)
-    if not login_path.startswith("/"):
-        raise ValueError("로그인 경로는 / 로 시작하는 API 아래 경로입니다: %s" % login_path)
-    values = {"SLUG": slug, "TITLE": title or slug, "API": api, "AUTH": auth, "LOGIN_PATH": login_path,
+    if not PATH_RE.match(login_path or ""):
+        raise ValueError("로그인 경로는 / 로 시작하는 API 아래 경로(영문·숫자·./-_~%%)입니다: %r" % login_path)
+    for name, v in (("아이디 필드", id_field), ("비밀번호 필드", pw_field), ("토큰 위치", token_field)):
+        if not FIELD_RE.match(v or ""):
+            raise ValueError("%s 이름은 영문·숫자·_.- 64자 이내입니다: %r" % (name, v))
+    title = title or slug
+    if len(title) > 60 or any(ord(ch) < 32 for ch in title):
+        raise ValueError("제목은 줄바꿈·제어문자 없이 60자 이내입니다")
+    values = {"SLUG": slug, "TITLE": title, "API": api, "AUTH": auth, "LOGIN_PATH": login_path,
               "ID_FIELD": id_field, "PW_FIELD": pw_field, "TOKEN_FIELD": token_field, "KEYRING": "site-api-" + slug}
     with open(TEMPLATE, encoding="utf-8") as f:
         src = f.read()
-    for k, v in values.items():
-        src = src.replace("{{%s}}" % k, json.dumps(v, ensure_ascii=False))
-    left = re.findall(r"\{\{[A-Z_]+\}\}", src)
-    if left:
-        raise ValueError("채우지 못한 자리: %s" % ", ".join(sorted(set(left))))
+    missing = sorted(set(PLACEHOLDER.findall(src)) - set(values))
+    if missing:
+        raise ValueError("채우지 못한 자리: %s" % ", ".join(missing))
+    # 한 번에 치환한다 — 넣은 값 안의 {{자리}} 를 다시 치환하면 문자열 밖으로 코드가 들어갈 수 있다.
+    src = PLACEHOLDER.sub(lambda m: json.dumps(values[m.group(1)], ensure_ascii=False), src)
     out_dir = out_dir or default_out_dir()
     os.makedirs(out_dir, exist_ok=True)
     stem = slug.replace("-", "_")
@@ -65,9 +75,10 @@ def scaffold(slug, base, auth="bearer-login", login_path="/auth/login", id_field
         path = os.path.join(out_dir, "%s_%d.py" % (stem, n))
     with open(path, "w", encoding="utf-8") as f:
         f.write(src)
+    q = shlex.quote(path)
     return {"ok": True, "path": path, "slug": slug, "api": api, "auth": auth,
-            "next": ["uv run %s status" % path, "uv run %s setup" % path if auth != "none" else None,
-                     "uv run %s get <경로>" % path]}
+            "next": ["uv run %s status" % q, "uv run %s setup" % q if auth != "none" else None,
+                     "uv run %s get <경로>" % q]}
 
 
 def main(argv=None):

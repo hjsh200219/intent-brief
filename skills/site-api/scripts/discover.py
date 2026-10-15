@@ -8,8 +8,10 @@
 1) robots.txt 가 막으면 멈춘다. 2) 페이지와 같은 호스트의 스크립트(최대 MAX_SCRIPTS개, 요청 간격 1초)를 받아
 extract.py 로 정적 분석한다. 3) --cdp 를 주면 이미 떠 있는 Chrome(원격 디버깅 포트)에 붙어 실제 XHR·fetch 요청을 잡는다
 (로그인·검색을 사람이 그 창에서 해 두면 정확해진다). 응답 본문은 저장하지 않고 JSON 키 구조만 남긴다(개인정보 보호).
-Authorization·Cookie 헤더 값은 기록하지 않는다.
+Authorization·Cookie 헤더 값과 쿼리 인자 값은 기록하지 않는다(이름만).
 """
+from __future__ import annotations
+
 import argparse
 import json
 import logging
@@ -17,7 +19,7 @@ import os
 import sys
 import time
 import urllib.robotparser
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import extract  # noqa: E402
@@ -37,6 +39,11 @@ def robots_allows(url: str) -> tuple[bool, str]:
     except Exception as e:  # noqa: BLE001 — robots.txt 를 못 읽으면 막지 않되 기록한다
         return True, f"robots.txt 읽기 실패({type(e).__name__}) — 이용약관을 직접 확인하세요"
     return rp.can_fetch(UA, url), robots
+
+
+def query_names(query: str) -> list[str]:
+    """쿼리 값(토큰·검색어일 수 있다)은 버리고 인자 이름만."""
+    return sorted({k for k, _ in parse_qsl(query, keep_blank_values=True)})
 
 
 def shape(data, depth=0):
@@ -83,7 +90,7 @@ def cdp_capture(url: str, cdp: str, scroll: int) -> list[dict]:
             req = resp.request
             if req.resource_type not in ("xhr", "fetch"):
                 return
-            item = {"method": req.method, "url": req.url.split("?")[0], "query": urlparse(req.url).query[:300],
+            item = {"method": req.method, "url": req.url.split("?")[0], "query_params": query_names(urlparse(req.url).query),
                     "status": resp.status, "content_type": resp.headers.get("content-type", ""),
                     "request_headers": sorted(h for h in req.headers if h.lower() not in SECRET_HEADERS),
                     "has_auth_header": any(h.lower() in SECRET_HEADERS for h in req.headers)}
