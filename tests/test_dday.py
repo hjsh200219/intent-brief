@@ -113,3 +113,13 @@ def test_plugin_hooks_json():
     assert "${CLAUDE_PLUGIN_ROOT}/skills/litigation-calc/scripts/dday.py" in cmd and cmd.rstrip().endswith("|| true")
     assert "python3" in cmd and "py -3" in cmd
     assert os.path.isfile(DDAY)
+
+
+def test_not_done_lines_are_kept(home, tmp_path):
+    """「미완료」·「완료 예정」은 완료 표시가 아니다 — 기한을 숨기면 안 된다."""
+    memo = ("## 주요 일정\n- 2026-09-20 답변서 제출 미완료\n- 2026-09-21 증거설명서 제출 완료 예정\n"
+            "- 2026-09-22 감정서 제출 (완료)\n- 2026-09-23 [완료] 보정서 제출\n- [x] 2026-09-24 송달료 납부\n")
+    root = tmp_path / "사건"
+    _case(root, "261002_가명정", memo)
+    DD.roots_add(str(root))
+    assert [i["date"] for i in DD.scan(days=14)["items"]] == ["2026-09-20", "2026-09-21"]

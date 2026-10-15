@@ -26,7 +26,8 @@ from deadline import IMMINENT_DAYS, WEEKDAYS  # noqa: E402
 
 DATE = re.compile(r"(20\d{2})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(\d{1,2})")
 CRITICAL = re.compile(r"항소|상고|항고|이의|추후보완|재심|제소|소\s*제기|시효|제척|불변")
-DONE = re.compile(r"~~.+~~|\[[xX]\]|완료")
+# 완료 「표시」만 — 「미완료」·「완료 예정」 줄을 빼면 있는 기한을 숨기게 된다
+DONE = re.compile(r"~~.+~~|\[[xX]\]|[(\[]\s*완료\s*[)\]]|(?<![미불])완료\s*$")
 MAX_DIRS = 500
 TIME_BUDGET = 4.0
 MAX_LINES = 10
