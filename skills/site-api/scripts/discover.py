@@ -80,7 +80,7 @@ def static_scan(url: str) -> dict:
 
 def cdp_capture(url: str, cdp: str, scroll: int) -> list[dict]:
     from playwright.sync_api import sync_playwright
-    seen = []
+    seen, host = [], urlparse(url).hostname
     with sync_playwright() as p:
         browser = p.chromium.connect_over_cdp(cdp)
         ctx = browser.contexts[0] if browser.contexts else browser.new_context()  # 실제 Chrome 은 새 context 를 막는 경우가 있다
@@ -90,7 +90,7 @@ def cdp_capture(url: str, cdp: str, scroll: int) -> list[dict]:
             req = resp.request
             if req.resource_type not in ("xhr", "fetch"):
                 return
-            item = {"method": req.method, "url": req.url.split("?")[0], "query_params": query_names(urlparse(req.url).query),
+            item = {"method": req.method, "url": req.url.split("?")[0], "same_host": urlparse(req.url).hostname == host, "query_params": query_names(urlparse(req.url).query),
                     "status": resp.status, "content_type": resp.headers.get("content-type", ""),
                     "request_headers": sorted(h for h in req.headers if h.lower() not in SECRET_HEADERS),
                     "has_auth_header": any(h.lower() in SECRET_HEADERS for h in req.headers)}
@@ -112,6 +112,7 @@ def cdp_capture(url: str, cdp: str, scroll: int) -> list[dict]:
             page.mouse.wheel(0, 2500)
             page.wait_for_timeout(1500)
         page.close()
+    seen.sort(key=lambda x: not x["same_host"])  # 대상 사이트 요청 먼저, 분석·광고 등 제3자 요청은 뒤
     return seen
 
 
@@ -143,7 +144,8 @@ def main() -> int:
     st = result["static"]
     print(json.dumps({"ok": True, "saved": path, "endpoints": [e["path"] for e in st["endpoints"][:15]],
                       "auth_candidates": st["auth_candidates"], "inline_state": st["inline_state"],
-                      "network_requests": len(result.get("network", []))}, ensure_ascii=False, indent=1))
+                      "network_requests": len(result.get("network", [])),
+                      "network_same_host": sum(1 for x in result.get("network", []) if x["same_host"])}, ensure_ascii=False, indent=1))
     return 0
 
 
