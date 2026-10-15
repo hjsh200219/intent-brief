@@ -68,9 +68,13 @@ description: >
 
 **Claude Code 플러그인**: 스크립트는 이 스킬 폴더의 `scripts/generate.js` 다(스킬을 불러올 때 표시되는 「Base directory for this skill」 경로 아래). `--output` 은 아래 「저장 위치 확인 절차」로 정한 경로를 준다.
 
+JSON 데이터는 **셸 명령에 직접 넣지 않는다** — 당사자 이름·사건 내용에 따옴표(`'`)가 들어 있으면 명령이 깨지거나 다른 명령이 실행될 수 있다. 먼저 Write 도구로 JSON 을 파일(예: 저장 위치의 `합의서_데이터.json`)에 쓰고 그 경로를 넘긴다. 경로는 큰따옴표로 감싼다.
+
 ```bash
-node "<스킬 폴더>/scripts/generate.js" --data '<JSON 데이터>' --output '<저장 위치>/형사합의서_피해자성명_사건유형.docx'
+node "<스킬 폴더>/scripts/generate.js" --data "<JSON 파일 경로>" --output "<저장 위치>/형사합의서_피해자성명_사건유형.docx"
 ```
+
+생성이 끝나면 JSON 파일은 지운다(개인정보).
 
 ### JSON 데이터 구조
 

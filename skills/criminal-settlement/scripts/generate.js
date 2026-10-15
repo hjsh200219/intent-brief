@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * 형사 합의서 생성 스크립트
- * Usage: node generate.js --data '<JSON>' --output '<path>'
+ * Usage: node generate.js --data "<JSON 파일 경로>" --output "<path>"  (사용자 입력 JSON 을 셸 인자에 직접 넣지 않는다)
  */
 
 const {

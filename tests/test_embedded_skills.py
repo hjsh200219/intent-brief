@@ -73,5 +73,11 @@ def test_skills_point_to_lookup():
         assert "../../references/law-lookup.md" in read(os.path.join(SKILLS, name, "SKILL.md")), name
 
 
+def test_no_inline_json_in_shell():
+    """사용자 입력이 든 JSON 을 셸 인자에 따옴표로 넣지 않는다(이름에 ' 가 있으면 명령 주입) — 파일로 넘긴다."""
+    for name, path in skill_texts():
+        assert not re.search(r"--data\s+'<", read(path)), path
+
+
 def test_cta_shared_file_present():
     assert os.path.exists(os.path.join(ROOT, "references", "cta-config.md"))
