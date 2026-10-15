@@ -215,17 +215,30 @@ def _nows(s):
 
 
 # ── 법령·조문 ─────────────────────────────────────────────────
+LAW_DISPLAY = 100
+LAW_PAGES = 5
+
+
 def search_law(client, name):
     """법령명(또는 약칭) 정확 일치 → {law_id, name, mst, effective} 또는 None."""
-    obj = client.get("lawSearch.do", target="law", query=name, display=20)
-    root = obj.get("LawSearch")
-    if not isinstance(root, dict):
-        raise FormatChanged("LawSearch 없음")
+    # 짧은 이름(「상법」)은 결과가 많아 첫 쪽 밖에 있다(2026-10-15 실측 56건 중 34번째) — 쪽을 넘겨 본다(최대 LAW_PAGES 쪽)
     want = _nows(name)
-    for it in _list(root.get("law")):
-        if want in (_nows(it.get("법령명한글")), _nows(it.get("법령약칭명"))) and it.get("현행연혁코드", "현행") == "현행":
-            return {"law_id": it.get("법령ID"), "name": it.get("법령명한글"), "mst": it.get("법령일련번호"),
-                    "effective": it.get("시행일자")}
+    for page in range(1, LAW_PAGES + 1):
+        obj = client.get("lawSearch.do", target="law", query=name, display=LAW_DISPLAY, page=page)
+        root = obj.get("LawSearch")
+        if not isinstance(root, dict):
+            raise FormatChanged("LawSearch 없음")
+        items = _list(root.get("law"))
+        for it in items:
+            if want in (_nows(it.get("법령명한글")), _nows(it.get("법령약칭명"))) and it.get("현행연혁코드", "현행") == "현행":
+                return {"law_id": it.get("법령ID"), "name": it.get("법령명한글"), "mst": it.get("법령일련번호"),
+                        "effective": it.get("시행일자")}
+        try:
+            total = int(root.get("totalCnt") or 0)
+        except ValueError:
+            total = 0
+        if not items or page * LAW_DISPLAY >= total:
+            break
     return None
 
 

@@ -249,3 +249,24 @@ def test_ask_uses_osascript_when_no_terminal(monkeypatch):
     monkeypatch.setattr(subprocess, "run", run)
     assert L.ask("키를 넣으십시오", "법제처 Open API") == "oc-from-dialog"
     assert seen["cmd"][0] == "osascript" and "법제처 Open API" in seen["cmd"][2]
+
+
+def test_search_law_pages_until_exact_name():
+    """짧은 법령명(「상법」)은 결과가 많아 첫 20건 밖에 있다(2026-10-15 실측: 56건 중 34번째) — 다음 쪽까지 본다."""
+    names = ["법%d" % i for i in range(33)] + ["상법"] + ["상법 시행령%d" % i for i in range(22)]
+
+    class Fake:
+        def __init__(self):
+            self.calls = []
+
+        def get(self, path, **kw):
+            self.calls.append(kw)
+            d, p = kw["display"], kw.get("page", 1)
+            chunk = names[(p - 1) * d:p * d]
+            return {"LawSearch": {"totalCnt": str(len(names)), "law": [
+                {"법령명한글": n, "법령ID": "00%d" % i, "법령일련번호": "m", "시행일자": "20260101"} for i, n in enumerate(chunk)]}}
+    f = Fake()
+    hit = L.search_law(f, "상법")
+    assert hit and hit["name"] == "상법"
+    assert all(c["display"] >= 20 for c in f.calls)
+    assert L.search_law(f, "없는법") is None and len(f.calls) <= 6
