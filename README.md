@@ -61,7 +61,7 @@ Claude Code 2.1.275 이상이면 한 줄로도 됩니다: `/plugin install lawfi
 |---|---|
 | `lyn-lawfirm` | 마켓플레이스를 업데이트하면 「Renamed to lawfirm」 안내가 뜹니다. `/plugin install lawfirm@lyn-lawfirm` 한 번이면 이어서 씁니다. 처음부터 새로 받으려면 `/plugin uninstall lyn-lawfirm@lyn-lawfirm` → 위 「설치」. 옛 k-data MCP 법령 검색은 없어지고 법제처 직접 조회(본인 OC 키)로 바뀝니다. |
 | `case-search` | 마켓플레이스를 업데이트하면 「Renamed to lawfirm」 안내가 뜹니다. `/plugin install lawfirm@case-search` 한 번이면 이어서 씁니다. 빅케이스 자격증명(키체인 `case-search-bigcase`, `~/.case-search/`)은 그대로 쓰므로 다시 등록하지 않아도 됩니다. 설정 명령은 `/case-search:setup` → `/lawfirm:case-search-setup` 으로 바뀌었습니다. |
-| `intent-brief` | `/plugin uninstall intent-brief@intent-brief` → 위 「설치」. 작업 폴더(`~/.intent-brief/`)와 법제처 키는 그대로 씁니다. |
+| `intent-brief` | 마켓플레이스를 업데이트하면 `/plugin install lawfirm@intent-brief` 한 번이면 이어서 씁니다(옛 주소 `hjsh200219/intent-brief` 는 이 저장소로 연결됩니다). 작업 폴더(`~/.intent-brief/`)와 법제처 키는 그대로 씁니다. |
 
 옛 플러그인과 lawfirm 을 함께 켜 두면 같은 스킬이 두 번 보이니 옛 것은 지우십시오.
 
