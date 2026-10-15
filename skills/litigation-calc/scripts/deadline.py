@@ -77,13 +77,11 @@ def raw_end(start, n, unit, include_first):
         days = n * (7 if unit == "주" else 1)
         return start + timedelta(days=days - 1 if include_first else days)
     months = n * (12 if unit == "연" else 1)
-    if include_first:
-        # 기산일이 시작일 — 최후의 월에서 기산일에 해당한 날의 전일(제160조제2항), 해당일이 없으면 그 월 말일(제3항).
-        same, month_end = _add_months(start, months)
-        return same - timedelta(days=1) if same else month_end
-    # 초일 불산입 — 기산일(다음 날)에 해당한 날의 전일 = 시작일의 대응일. 없으면 그 월 말일.
-    same, month_end = _add_months(start, months)
-    return same or month_end
+    # 기산일 = 초일 불산입이면 다음 날(제157조). 최후의 월·연에서 기산일에 해당한 날의 전일에 만료(제160조제2항),
+    # 해당일이 없으면 그 월 말일(제3항). 기산일이 월초면 그 달 말일이 된다(4/30 송달 1개월 → 5/31).
+    origin = start if include_first else start + timedelta(days=1)
+    same, month_end = _add_months(origin, months)
+    return same - timedelta(days=1) if same else month_end
 
 
 def compute(start, preset=None, n=None, unit=None, regime="민사", include_first=False, extra_holidays=(), today=None):

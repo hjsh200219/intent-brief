@@ -176,3 +176,10 @@ def test_holiday_table_shape():
     assert h["years"] == [2024, 2027] and h["source"]
     assert all(date.fromisoformat(k).year in range(2024, 2028) for k in h["holidays"])
     assert h["holidays"]["2026-05-01"] == "노동절"
+
+
+@pytest.mark.parametrize("start,n,unit,end", [("2026-04-30", 1, "월", "2026-05-31"), ("2026-06-30", 1, "월", "2026-07-31"),
+                                             ("2027-02-28", 1, "연", "2028-02-29"), ("2026-01-30", 1, "월", "2026-02-28")])
+def test_month_counts_from_next_day(start, n, unit, end):
+    """초일 불산입이면 기산일(다음 날) 기준 — 기산일이 월초면 그 달 말일(민법 제157조·제160조)."""
+    assert D.compute(start, n=n, unit=unit)["raw_end"] == end
