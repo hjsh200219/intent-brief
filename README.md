@@ -1,6 +1,6 @@
 # lawfirm — 한국 변호사용 법률 업무 플러그인 (Claude Code)
 
-민사 서면 초안, 법률 문서 초안, 판례 검색을 한 플러그인에서 합니다. `lyn-lawfirm`·`case-search`·`intent-brief` 플러그인을 0.4.0 에서 하나로 합쳤습니다(아래 「옛 플러그인에서 옮기기」).
+민사 서면 초안, 법률 문서 초안, 판례 검색을 한 플러그인에서 합니다.
 
 - **의도 기반 민사 서면(`intent-brief` 스킬)**: 변호사가 이번 서면으로 얻으려는 **의도**를 먼저 정하면, 그 의도와 당사자 지위에 맞춰 민사 준비서면·답변서 초안(.docx)과 내부용 의도대응표(.docx)를 만듭니다.
   - 의도 목록: 전부 승소(W) · 손해 최소화(M) · 조정·화해 유도(S) · 상대 입장 고정·증거 제출 압박(P) · 쟁점 재구성(R) · 상소 대비 기록(A) · 의뢰인 보고(C, 부 의도 전용)
@@ -60,22 +60,7 @@ Claude Code 2.1.275 이상이면 한 줄로도 됩니다: `/plugin install lawfi
 - `/lawfirm:law-key-setup` — 법제처 OC 키(인자 `us` 면 CourtListener 토큰도)
 - `/lawfirm:case-search-setup` — 빅케이스 이메일·비밀번호(OS 키체인)
 
-법률 문서 스킬 6종은 thechain.lawyer(이영남 변호사 사무소)가 배포하던 lyn-lawfirm 플러그인 스킬입니다(lyn-lawfirm `9d620a9`, MIT). 법령·판례 조회는 모두 이 플러그인의 법제처 직접 호출로 바꿨고(`references/law-lookup.md`), 산출물 끝의 변호사 안내(CTA)는 `references/cta-config.md` 를 따릅니다.
-
-## 옛 플러그인에서 옮기기
-
-옛 저장소(`hjsh200219/lyn-lawfirm`·`hjsh200219/case-search`)는 이전 안내만 남기고 보관(archive)했습니다. 이미 설치하신 분은 두 단계면 됩니다.
-
-1. `/plugin` → Marketplaces → 쓰던 마켓플레이스(`lyn-lawfirm`·`case-search`·`intent-brief`) → **Update marketplace**
-2. `/plugin install lawfirm@<그 마켓플레이스 이름>` — 옛 플러그인이 lawfirm 으로 바뀝니다(2026-10-15 세 경로 모두 GitHub 에서 실측)
-
-| 쓰던 플러그인 | 이어지는 것 · 바뀌는 것 |
-|---|---|
-| `lyn-lawfirm` | 법률 문서 스킬 6종은 그대로 들어 있습니다. 옛 k-data MCP 법령 검색은 없어지고 법제처 직접 조회(본인 OC 키 — 처음 쓸 때 안내)로 바뀝니다. 옛 설치 명령 `install lyn-lawfirm@lyn-lawfirm` 은 이제 동작하지 않습니다. |
-| `case-search` | 빅케이스 자격증명(키체인 `case-search-bigcase`, `~/.case-search/`)을 그대로 쓰므로 다시 등록하지 않아도 됩니다. 설정 명령은 `/case-search:setup` → `/lawfirm:case-search-setup` 으로 바뀌었습니다. |
-| `intent-brief` | 옛 주소 `hjsh200219/intent-brief` 는 이 저장소로 연결됩니다. 작업 폴더(`~/.intent-brief/`)와 법제처 키를 그대로 씁니다. |
-
-옛 플러그인을 둘 이상 쓰셨다면 위 2단계를 한 번만 하고, 나머지 옛 플러그인은 `/plugin uninstall <이름>@<마켓플레이스>` 로 지우십시오 — lawfirm 이 두 번 설치되면 같은 스킬이 겹칩니다. 새로 시작하려면 옛 것을 모두 지우고 위 「설치」를 따르면 됩니다.
+법률 문서 스킬 6종은 thechain.lawyer(이영남 변호사 사무소)의 스킬입니다(MIT). 법령·판례 조회는 이 플러그인의 법제처 직접 호출을 쓰고(`references/law-lookup.md`), 산출물 끝의 변호사 안내(CTA)는 `references/cta-config.md` 를 따릅니다.
 
 ## 지원 범위 (0.5.0)
 
@@ -113,7 +98,7 @@ uv run --no-project --with "scrapling[fetchers]>=0.4.11" --with keyring --with p
 ## 변경 이력
 
 - **0.5.0 (2026-10-15)** — case-search 에 법제처 조회(법령·조문·판례·헌재결정·법령해석례·행정규칙·용어)와 해외 판례(미국 CourtListener·독일 OpenLegalData)를 넣었습니다. 빅케이스 계정이 없으면 법제처·해외 판례만 씁니다. 법제처 키·CourtListener 토큰을 `/lawfirm:law-key-setup` 입력 창으로 받아 저장합니다(명령행 인자로 받던 경로는 없앴습니다).
-- **0.4.0 (2026-10-15)** — 이름을 intent-brief 에서 lawfirm 으로 바꾸고 case-search(빅케이스 판례 검색)를 합쳤습니다. 옛 lyn-lawfirm·case-search·intent-brief 설치본은 마켓플레이스 업데이트로 옮겨 옵니다. 빅케이스 토큰을 bigcase.ai 밖으로 보내지 않게 막았고, 한국어 Windows 콘솔(cp949)에서 판례 조회 결과가 깨지던 문제를 고쳤습니다.
+- **0.4.0 (2026-10-15)** — 이름을 lawfirm 으로 정하고 판례 검색(case-search)을 넣었습니다. 빅케이스 인증 정보를 bigcase.ai 밖으로 보내지 않게 막았고, 한국어 Windows 콘솔(cp949)에서 판례 조회 결과가 깨지던 문제를 고쳤습니다.
 - **0.3.0 (2026-10-15, 중간판 0.2.0 과 함께 공개)** — 의도 유불리 검토 라운드(0.2.0), 법제처 Open API 직접 호출(k-data MCP 폐지), 빅케이스 자동 연결, 법률 문서 스킬 6종 내장.
 - **0.1.0 (2026-10-14)** — 의도 기반 민사 준비서면·답변서 첫 공개.
 
