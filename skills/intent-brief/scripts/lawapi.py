@@ -229,6 +229,32 @@ def search_law(client, name):
     return None
 
 
+def _txt(v):
+    if isinstance(v, list):
+        return " ".join(_txt(x) for x in v)
+    return (v or "").strip() if isinstance(v, str) else ""
+
+
+def _items(node):
+    """호(1. 2. …)와 그 아래 목(가. 나. …)을 줄 단위로 — 응답은 항 → 호 → 목으로 중첩된다."""
+    lines = []
+    for ho in _list(node.get("호")) if isinstance(node, dict) else []:
+        if not isinstance(ho, dict):
+            continue
+        if _txt(ho.get("호내용")):
+            lines.append(_txt(ho.get("호내용")))
+        for mok in _list(ho.get("목")):
+            if isinstance(mok, dict) and _txt(mok.get("목내용")):
+                lines.append(_txt(mok.get("목내용")))
+    return "\n".join(lines)
+
+
+def _para(h):
+    if not isinstance(h, dict):
+        return ""
+    return "\n".join(x for x in (_txt(h.get("항내용")), _items(h)) if x)
+
+
 def get_article(client, law_id, article, sub=0):
     """조문 본문 — 제목 줄(편·장)이 아니라 조문여부 「조문」인 항목. 없으면 None."""
     jo = "%04d%02d" % (int(article), int(sub))
@@ -241,13 +267,12 @@ def get_article(client, law_id, article, sub=0):
     for u in units:
         text = (u.get("조문내용") or "").strip()
         if u.get("조문여부") == "조문" and re.match(re.escape(head) + r"\s*\(", text):
-            paras = []
-            for h in _list(u.get("항")):
-                c = h.get("항내용") if isinstance(h, dict) else None
-                if c:
-                    paras.append(c if isinstance(c, str) else " ".join(c))
+            paras = [p for p in (_para(h) for h in _list(u.get("항"))) if p]
+            items = _items(u)  # 항 없이 조문 바로 아래 호가 오는 경우
+            if items:
+                paras.append(items)
             return {"head": head, "title": u.get("조문제목"), "text": text, "paragraphs": paras,
-                    "effective": u.get("조문시행일자")}
+                    "full_text": "\n".join([text] + paras), "effective": u.get("조문시행일자")}
     return None
 
 

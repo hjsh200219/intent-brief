@@ -66,6 +66,7 @@ ROUTES = {
     ("lawSearch.do", "law", "query", "민사소송법"): "drf_law_search_민사소송법.json",
     ("lawSearch.do", "law", "query", "소송촉진법"): "drf_law_search_소송촉진법.json",
     ("lawService.do", "law", "JO", "028800"): "drf_article_001700_028800.json",
+    ("lawService.do", "law", "JO", "045100"): "drf_article_001700_045100.json",
     ("lawSearch.do", "prec", "nb", "2016다225353"): "drf_prec_nb_2016다225353.json",
     ("lawSearch.do", "prec", "nb", "2018다248626"): "drf_prec_nb_2018다248626.json",
     ("lawSearch.do", "prec", "nb", "2014다26187"): "drf_prec_nb_empty.json",
@@ -132,6 +133,15 @@ def test_search_law_and_article(drf):
     assert art["head"] == "제288조" and "불요증사실" in art["text"]  # 편·장 제목 줄이 아니라 조문 항목
     q = drf.seen[-1]
     assert q["JO"] == "028800" and q["type"] == "JSON" and q["OC"] == "k"
+
+
+def test_article_keeps_items_under_paragraphs(drf):
+    """항 아래 호(1. 2. …)·목까지 본문에 담는다 — 제451조 재심사유 11개 호가 빠지면 조문을 잘못 읽는다(2026-10-15 발견)."""
+    art = L.get_article(client(), "001700", 451)
+    first = art["paragraphs"][0]
+    assert "다음 각호" in first and "1. 법률에 따라 판결법원을 구성하지 아니한 때" in first
+    assert "11. " in first and len(art["paragraphs"]) == 3
+    assert "1. 법률에 따라 판결법원을" in art["full_text"] and art["full_text"].startswith("제451조(재심사유)")
 
 
 def test_prec_exact_and_detail(drf):
