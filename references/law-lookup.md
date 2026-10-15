@@ -1,0 +1,28 @@
+# 법령·판례 조회 (이 플러그인의 모든 스킬 공용)
+
+MCP 를 쓰지 않는다. 법제처 Open API 를 직접 부르는 스크립트 `lawapi.py` 와, 설치돼 있으면 빅케이스(case-search) 연결 `casesearch.py` 를 쓴다. 둘 다 intent-brief 스킬 폴더에 있다.
+
+## 준비
+
+- 스크립트 폴더 `$S`: 이 플러그인 루트의 `skills/intent-brief/scripts` (스킬을 불러올 때 표시되는 기준 경로가 `…/skills/<스킬>` 이면 `…/skills/intent-brief/scripts`). 플러그인으로 설치됐다면 `${CLAUDE_PLUGIN_ROOT}/skills/intent-brief/scripts`.
+- Python 3.9 이상 `$PY`: `python3 --version` → `python --version` → `py -3 --version` 순서로 찾는다. 외부 패키지는 필요 없다.
+- 법제처 키(OC): `"$PY" "$S/lawapi.py" key status` → `configured: false` 면 `guide` 문구대로 사용자에게 OC 값을 일반 텍스트로 받아 `printf '%s\n' '<OC>' | "$PY" "$S/lawapi.py" key set --stdin` 으로 저장한다(판례 1건으로 검증, 본인만 읽는 파일). 키 값은 다시 출력하거나 다른 곳에 적지 않는다. `key_invalid` 면 키가 틀렸거나 이 PC 의 IP 가 법제처에 등록되지 않은 것이다.
+- 빅케이스: `"$PY" "$S/casesearch.py" status` → `available: true` 면 판례 검색에 함께 쓴다(본인 계정, 사람이 찾는 정도의 빈도로만, 페이지를 끝까지 넘기지 않는다). `false` 면 법제처만 쓴다.
+
+## 명령
+
+| 하려는 일 | 명령 |
+|---|---|
+| 법령 확인(법령명·약칭 정확 일치) | `"$PY" "$S/lawapi.py" law "형법"` |
+| 조문 본문 | `"$PY" "$S/lawapi.py" law "형법" --article 347` (조의2 는 `--article 347-2`) |
+| 판례 검색(본문) | `"$PY" "$S/lawapi.py" prec-search "사기 피해액 집행유예" --fulltext [--court 대법원] [--display 10]` |
+| 판례 검색(사건명) | `"$PY" "$S/lawapi.py" prec-search "손해배상"` |
+| 사건번호로 판례 찾기 | `"$PY" "$S/lawapi.py" prec-search "2016다225353" --nb` |
+| 판례 상세(판시사항·판결요지·참조조문·전문) | `"$PY" "$S/lawapi.py" prec <판례일련번호>` |
+| 법령해석례 | `"$PY" "$S/lawapi.py" search expc "<검색어>"` → `"$PY" "$S/lawapi.py" detail expc <ID>` |
+| 헌법재판소 결정 | `"$PY" "$S/lawapi.py" search detc "<검색어>"` → `"$PY" "$S/lawapi.py" detail detc <ID>` |
+| 법령용어 | `"$PY" "$S/lawapi.py" term "소멸시효"` |
+| 빅케이스 판례 검색(있을 때) | `"$PY" "$S/casesearch.py" search "<검색어>"` |
+| 빅케이스 판결 전문(있을 때) | `"$PY" "$S/casesearch.py" case 대법원 2014다26187` |
+
+모든 명령은 JSON 을 출력한다. `ok: false` 면 `error`(`no_key`·`key_invalid`·`outage`·`format_changed`)를 사용자에게 그대로 알리고 추측으로 채우지 않는다. 검색으로 얻은 실제 일련번호·ID 로 상세를 조회한 것만 인용한다. 법제처에 원문이 없는 판례도 있다(예: 2014다26187) — 빅케이스에서 찾았으면 「빅케이스 확인」이라고 밝힌다.

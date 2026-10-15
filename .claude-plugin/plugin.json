@@ -1,7 +1,7 @@
 {
   "name": "intent-brief",
   "version": "0.3.0",
-  "description": "변호사가 서면의 의도(전부 승소·손해 최소화·조정 유도·입장 고정·쟁점 재구성·상소 대비)를 고르면 인터뷰로 의도를 고정하고 그 의도에 맞춘 민사 준비서면·답변서 초안(.docx)과 내부용 의도대응표를 만드는 플러그인. 조문·판례 인용은 법제처 원문과 정확 일치로 대조한다. AI는 실수할 수 있으며 최종 검토와 제출 판단은 사용 변호사의 책임입니다. | Intent-driven Korean civil brief drafting for attorneys. AI can make mistakes; the attorney is responsible for final review.",
+  "description": "변호사가 서면의 의도(전부 승소·손해 최소화·조정 유도·입장 고정·쟁점 재구성·상소 대비)를 고르면 소송 전체 기준 유불리를 먼저 검토하고 그 의도에 맞춘 민사 준비서면·답변서 초안(.docx)과 내부용 의도대응표를 만드는 플러그인. thechain.lawyer 법률 문서 스킬 6종(내용증명·고소장·형사합의서·사실확인서·형사절차 시뮬레이터·양형 예측) 내장. 조문·판례는 법제처 Open API 를 직접 조회해 원문과 정확 일치로 대조하고(사용자 키), case-search(빅케이스)가 설치돼 있으면 자동 연결한다. AI는 실수할 수 있으며 최종 검토와 제출 판단은 사용 변호사의 책임입니다. | Intent-driven Korean civil brief drafting plus six Korean legal document skills. AI can make mistakes; the attorney is responsible for final review.",
   "author": {
     "name": "hoshin",
     "url": "https://github.com/hjsh200219"
@@ -9,5 +9,22 @@
   "homepage": "https://github.com/hjsh200219/intent-brief",
   "repository": "https://github.com/hjsh200219/intent-brief",
   "license": "MIT",
-  "keywords": ["korean-law", "legal", "litigation", "brief", "준비서면", "답변서", "민사소송", "변호사"]
+  "keywords": [
+    "korean-law",
+    "legal",
+    "litigation",
+    "brief",
+    "준비서면",
+    "답변서",
+    "민사소송",
+    "변호사",
+    "내용증명",
+    "고소장",
+    "형사합의서",
+    "사실확인서",
+    "형사절차",
+    "양형예측",
+    "판례",
+    "법제처"
+  ]
 }

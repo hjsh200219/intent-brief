@@ -21,9 +21,23 @@ repo 폴더를 받아 두었다면 로컬 경로로도 설치할 수 있습니�
 
 사용: 「이 사건 준비서면 의도부터 정해서 써 줘」처럼 요청하면 `intent-brief` 스킬이 시작됩니다.
 
-## 지원 범위 (0.1.0)
+## 스킬
 
-- 서면: 민사 준비서면(원고·피고), 답변서(피고). 소장·항소이유서·형사·가사·행정은 범위 밖.
+| 스킬 | 하는 일 |
+|---|---|
+| `intent-brief` | 의도 기반 민사 준비서면·답변서 초안 + 의도대응표 |
+| `certified-letter` | 내용증명 초안(.docx) |
+| `complaint-drafter` | 형사 고소장 초안(.docx) |
+| `criminal-settlement` | 형사 합의서(.docx, Node `docx` 패키지) |
+| `fact-confirmation` | 사실확인서(.docx) |
+| `criminal-procedure-simulator` | 형사절차 단계별 안내·시각화 |
+| `sentencing-predictor` | 양형기준 기반 양형 예측 |
+
+`intent-brief` 밖의 6개는 thechain.lawyer(이영남 변호사 사무소)가 배포하던 lyn-lawfirm 플러그인 스킬을 내장한 것입니다(lyn-lawfirm `9d620a9`, MIT). 법령·판례 조회는 모두 이 플러그인의 법제처 직접 호출로 바꿨고(`references/law-lookup.md`), 산출물 끝의 변호사 안내(CTA)는 `references/cta-config.md` 를 따릅니다.
+
+## 지원 범위 (0.3.0)
+
+- `intent-brief` 서면: 민사 준비서면(원고·피고), 답변서(피고). 소장·항소이유서·가사·행정은 범위 밖(형사 문서는 위 내장 스킬).
 - 환경: Claude Code on macOS·Windows. Cowork 는 아직 지원하지 않습니다.
 
 ## 데이터 위치

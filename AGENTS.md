@@ -1,6 +1,6 @@
 # AGENTS.md — intent-brief
 
-변호사가 서면의 의도를 고르면 그 의도에 맞춘 민사 준비서면·답변서 초안(.docx)과 내부용 의도대응표를 만드는 Claude Code 플러그인. 스킬 1개(`intent-brief`). 법령·판례는 법제처 Open API 를 직접 부른다(키는 변호사에게 받아 저장, MCP 없음). case-search 플러그인이 설치·로그인돼 있으면 빅케이스를 보조로 연결한다. 서버·DB·빌드 없음.
+변호사가 서면의 의도를 고르면 그 의도에 맞춘 민사 준비서면·답변서 초안(.docx)과 내부용 의도대응표를 만드는 Claude Code 플러그인. 스킬 7개 — `intent-brief`(본체) + thechain.lawyer 법률 문서 스킬 6개(lyn-lawfirm 에서 내장). 법령·판례는 법제처 Open API 를 직접 부른다(키는 변호사에게 받아 저장, MCP 없음). case-search 플러그인이 설치·로그인돼 있으면 빅케이스를 보조로 연결한다. 서버·DB·빌드 없음.
 
 ## 지도
 
@@ -8,6 +8,7 @@
 |---|---|
 | 매니페스트 | `.claude-plugin/plugin.json`·`marketplace.json`(버전 둘 다 맞춘다) |
 | 스킬 절차(모델이 읽는 정본) | `skills/intent-brief/SKILL.md` |
+| 내장 스킬 6개(lyn-lawfirm `9d620a9` 복사, 이후 따로 감) | `skills/certified-letter/` 외 5개 — 법령·판례는 `references/law-lookup.md`, CTA 는 `references/cta-config.md` |
 | 의도·채점·문구 데이터 | `skills/intent-brief/references/` — `intent-params.json`(섹션 어휘·충돌표), `intents.md`, `scoring.md`, `phrases.json`, `brief-types/` |
 | 런타임 스크립트 | `skills/intent-brief/scripts/` — 역할·의존 방향은 [ARCHITECTURE.md](ARCHITECTURE.md) |
 | 테스트 | `tests/` — 픽스처 F1(하네스 데모 사본)·F2·F3(합성), `recorded/`(녹화 응답), `e2e/`(답 파일) |
@@ -29,7 +30,7 @@ python3 dev/verify_docs.py                                                      
 
 ## 불변 조건 (어기면 받는 PC 에서 깨진다)
 
-1. 런타임 스크립트는 **표준 라이브러리만, Python 3.9 문법**. `tests/test_params.py` 가 import·문법을 검사한다.
+1. intent-brief 런타임 스크립트(`skills/intent-brief/scripts/`)는 **표준 라이브러리만, Python 3.9 문법**(내장 스킬의 `generate.js` 는 Node). `tests/test_params.py` 가 import·문법을 검사한다.
 2. 작업 폴더는 플러그인 밖 — macOS `~/.intent-brief/`, Windows `%LOCALAPPDATA%\intent-brief\`. `CLAUDE_PLUGIN_DATA` 는 uninstall 때 지워지므로 쓰지 않는다.
 3. 사건 폴더의 `사건메모.md` 는 `memo.py apply` 의 확인 토큰으로만 쓴다. 줄바꿈(CRLF)을 보존하고, 사본에 먼저 적용해 성공했을 때만 바꾼다.
 4. 법제처 키(OC)는 `lawapi.py` 만 다룬다 — 작업 폴더 config.json(0600)에 저장하고 출력·캐시·오류 문구에 값을 쓰지 않는다(URL 은 `OC=***` 로 가린다). 키가 없으면 대조를 멈추고 변호사에게 받는다.
@@ -44,6 +45,7 @@ python3 dev/verify_docs.py                                                      
 - `dev/replay.py`·`dev/e2e.py` 는 `claude -p` 를 여러 번 부른다(비용 발생). 판정 기준은 `dev/e2e.py` 의 `judge_run`. 선택 환경변수: `INTENT_BRIEF_TOKEN_FILE`(무인 실행 토큰 파일), `JEV_DIR`(블라인드 판별용 Jev 클라이언트), `INTENT_BRIEF_DEMO_DIR`(casedb 계약 테스트의 데모 원본).
 - 공개 repo 다. 픽스처의 인명·사건번호는 가명이며 실제 의뢰인 자료를 넣지 않는다.
 - 의도 목록·기본값 개정은 사용 통계(`intent.py stats`)를 근거로 한다.
+- 내장 스킬에 MCP·Cowork 경로·AskUserQuestion 을 다시 넣지 않는다(`tests/test_embedded_skills.py` 가 막는다). lyn-lawfirm 원본과는 자동 동기화하지 않는다.
 
 ## 문서
 

@@ -22,7 +22,7 @@
 |---|---|---|
 | L0 매니페스트 | `.claude-plugin/` | 없음 |
 | L1 데이터 | `skills/intent-brief/references/` | 없음 |
-| L2 절차 | `skills/intent-brief/SKILL.md` | L1, L3(명령으로 호출) |
+| L2 절차 | `skills/intent-brief/SKILL.md`, 내장 스킬 6개 `skills/*/SKILL.md` | L1, L3(명령으로 호출), 공용 `references/`(law-lookup·cta-config) |
 | L3 런타임 | `skills/intent-brief/scripts/` | 표준 라이브러리, L1, 같은 레이어 |
 | L4 개발 | `dev/`, `tests/` | 전부 |
 
