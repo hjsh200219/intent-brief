@@ -379,6 +379,13 @@ def main() -> int:
     except (SiteError, ValueError) as e:
         emit({"ok": False, "error": str(e)})
         return 3
+    except PermissionError as e:
+        if not os.environ.get("CODEX_SANDBOX"):
+            raise
+        emit({"ok": False, "error": "sandbox_write_blocked", "path": e.filename,
+              "guide": f"Codex 샌드박스가 {home()} 쓰기를 막았습니다. 권한 상승으로 다시 실행하거나 config.toml 의 "
+                       "[sandbox_workspace_write] writable_roots 에 그 폴더를 넣으십시오."})
+        return 6
 
 
 if __name__ == "__main__":

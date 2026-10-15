@@ -152,3 +152,27 @@ def test_docs_for_codex_shells():
         assert "network_blocked" in text, rel
     readme = open(os.path.join(ROOT, "README.md"), encoding="utf-8").read()
     assert "writable_roots" in readme and "network_access" in readme
+
+
+def _deny(*a, **k):
+    raise PermissionError(1, "Operation not permitted", "/Users/x/.intent-brief/playbooks")
+
+
+def test_playbook_and_foreigncase_explain_sandbox_write_block(monkeypatch, capsys, tmp_path):
+    monkeypatch.setenv("CODEX_SANDBOX", "seatbelt")
+    sys.path.insert(0, os.path.join(ROOT, "skills", "review-contract", "scripts"))
+    import playbook as PB
+    monkeypatch.setenv("LAWFIRM_PLAYBOOK_DIR", str(tmp_path))
+    monkeypatch.setattr(PB.shutil, "copyfile", _deny)
+    assert PB.main(["init", "contract"]) == 6
+    assert json.loads(capsys.readouterr().out)["error"] == "sandbox_write_blocked"
+    monkeypatch.setattr(FC, "key_set", _deny)
+    monkeypatch.setattr(FC, "ask", lambda *a, **k: "v")
+    assert FC.main(["key", "set", "us", "--prompt"]) == 6
+    assert json.loads(capsys.readouterr().out)["error"] == "sandbox_write_blocked"
+
+
+def test_uv_scripts_explain_sandbox_write_block():
+    for rel in ("skills/case-search/scripts/bigcase.py", "skills/site-api/templates/client.py.tmpl"):
+        src = open(os.path.join(ROOT, rel), encoding="utf-8").read()
+        assert "except PermissionError" in src and "writable_roots" in src, rel

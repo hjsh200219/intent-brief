@@ -16,6 +16,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 REFS = os.path.join(HERE, "..", "references")
 KINDS = {"contract": "playbook-contract.md", "nda": "playbook-nda.md"}
+SANDBOX_GUIDE = "Codex 샌드박스가 홈 폴더 쓰기를 막았습니다(%s). 권한 상승으로 같은 명령을 다시 실행하거나, config.toml 의 [sandbox_workspace_write] writable_roots 에 그 폴더를 넣으십시오."
 
 
 def playbook_dir():
@@ -94,6 +95,12 @@ def main(argv=None):
     a = ap.parse_args(argv)
     try:
         out = {"path": path, "show": show, "init": init}[a.cmd](a.kind, a.profile)
+    except PermissionError as e:
+        if not os.environ.get("CODEX_SANDBOX"):
+            raise
+        print(json.dumps({"ok": False, "error": "sandbox_write_blocked", "path": e.filename, "guide": SANDBOX_GUIDE % playbook_dir()},
+                         ensure_ascii=False))
+        return 6
     except (ValueError, OSError) as e:
         print(json.dumps({"ok": False, "error": "bad_input", "message": str(e)}, ensure_ascii=False))
         return 3

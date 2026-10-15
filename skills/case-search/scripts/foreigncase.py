@@ -72,6 +72,9 @@ class NetworkBlocked(ForeignError):
     code = "network_blocked"
 
 
+SANDBOX_GUIDE = "Codex 샌드박스가 홈 폴더 쓰기를 막았습니다(%s). 권한 상승으로 같은 명령을 다시 실행하거나, config.toml 의 [sandbox_workspace_write] writable_roots 에 그 폴더를 넣으십시오."
+
+
 DIALOG_FAIL = "입력 창을 띄우지 못했습니다(%s) — Codex 샌드박스라면 권한 상승으로 다시 실행하거나, 자기 터미널에서 같은 명령을 직접 실행하십시오"
 
 
@@ -402,6 +405,10 @@ def main(argv=None):
         else:
             key_clear(a.site)
             out = {"cleared": a.site, "keys": key_status()}
+    except PermissionError as e:
+        if not os.environ.get("CODEX_SANDBOX"):
+            raise
+        return _emit({"ok": False, "error": "sandbox_write_blocked", "path": e.filename, "guide": SANDBOX_GUIDE % _home()}, 6)
     except (ValueError, ForeignError) as e:
         err = e if isinstance(e, ForeignError) else BadRequest("숫자 id 가 필요합니다")
         res = {"ok": False, "error": err.code, "detail": str(err)}

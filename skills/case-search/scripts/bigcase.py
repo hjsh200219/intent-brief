@@ -583,6 +583,12 @@ def main() -> int:
     except BigcaseError as e:
         print(f"✗ {e}", file=sys.stderr)
         return 1
+    except PermissionError as e:
+        if not os.environ.get("CODEX_SANDBOX"):
+            raise
+        print(f"✗ Codex 샌드박스가 홈 폴더 쓰기를 막았습니다({e.filename}). 권한 상승으로 같은 명령을 다시 실행하거나, "
+              "config.toml 의 [sandbox_workspace_write] writable_roots 에 그 폴더를 넣으십시오.", file=sys.stderr)
+        return 6
 
 
 if __name__ == "__main__":
