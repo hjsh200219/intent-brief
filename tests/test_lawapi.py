@@ -67,6 +67,8 @@ ROUTES = {
     ("lawSearch.do", "law", "query", "소송촉진법"): "drf_law_search_소송촉진법.json",
     ("lawService.do", "law", "JO", "028800"): "drf_article_001700_028800.json",
     ("lawService.do", "law", "JO", "045100"): "drf_article_001700_045100.json",
+    ("lawService.do", "law", "ID", "003984"): "drf_law_003984.json",  # 뒤 항목이 이긴다 — JO 요청은 아래 항목
+    ("lawService.do", "law", "JO", "000100"): "drf_article_003984_000100.json",
     ("lawSearch.do", "prec", "nb", "2016다225353"): "drf_prec_nb_2016다225353.json",
     ("lawSearch.do", "prec", "nb", "2018다248626"): "drf_prec_nb_2018다248626.json",
     ("lawSearch.do", "prec", "nb", "2014다26187"): "drf_prec_nb_empty.json",
@@ -142,6 +144,13 @@ def test_article_keeps_items_under_paragraphs(drf):
     assert "다음 각호" in first and "1. 법률에 따라 판결법원을 구성하지 아니한 때" in first
     assert "11. " in first and len(art["paragraphs"]) == 3
     assert "1. 법률에 따라 판결법원을" in art["full_text"] and art["full_text"].startswith("제451조(재심사유)")
+
+
+def test_single_provision_law_without_article_number(drf):
+    """조 번호 없이 한 문장뿐인 대통령령(소송촉진법 법정이율 규정, 조문번호 0·조문여부 전문)도 제1조로 읽는다."""
+    art = L.get_article(client(), "003984", 1)
+    assert art and "연 100분의 12" in art["full_text"] and art["head"] == "본문" and art["single_provision"] is True
+    assert L.get_article(client(), "003984", 2) is None
 
 
 def test_prec_exact_and_detail(drf):

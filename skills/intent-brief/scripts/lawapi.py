@@ -288,6 +288,21 @@ def get_article(client, law_id, article, sub=0):
                 paras.append(items)
             return {"head": head, "title": u.get("조문제목"), "text": text, "paragraphs": paras,
                     "full_text": "\n".join([text] + paras), "effective": u.get("조문시행일자")}
+    if int(article) == 1 and not int(sub) and not units:
+        return _single_provision(client, law_id)
+    return None
+
+
+def _single_provision(client, law_id):
+    """조 번호 없이 한 문장뿐인 법령(예: 소송촉진법 법정이율 규정 — 조문번호 0, 조문여부 「전문」)은 그 본문을 제1조로 준다."""
+    law = client.get("lawService.do", target="law", ID=law_id).get("법령")
+    if not isinstance(law, dict):
+        raise FormatChanged("법령 없음")
+    units = [u for u in _list((law.get("조문") or {}).get("조문단위")) if isinstance(u, dict)]
+    if len(units) == 1 and units[0].get("조문여부") == "전문" and str(units[0].get("조문번호")) in ("0", ""):
+        text = (units[0].get("조문내용") or "").strip()
+        return {"head": "본문", "title": None, "text": text, "paragraphs": [], "full_text": text,
+                "effective": units[0].get("조문시행일자"), "single_provision": True}
     return None
 
 
