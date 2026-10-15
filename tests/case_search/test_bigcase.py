@@ -219,7 +219,8 @@ def test_similar_brief_decisions_requests(env):
     assert bc.decision("행정심판", "1")["filepath"] == "https://x/1.pdf"
 
 
-@pytest.mark.parametrize("url", ["https://evil.example/api", "http://bigcase.ai/api/v1/x", "https://bigcase.ai.evil.example/x"])
+@pytest.mark.parametrize("url", ["https://evil.example/api", "http://bigcase.ai/api/v1/x", "https://bigcase.ai.evil.example/x",
+                                 "https://user@bigcase.ai/x", "https://bigcase.ai@evil.example/x", "https://bigcase.ai:8443/x"])
 def test_request_never_sends_token_off_host(env, url):
     """Bearer 토큰은 https://bigcase.ai 로만 — 다른 호스트·평문 http 주소는 요청 전에 거부한다."""
     bc = client({}, {"accessToken": jwt(time.time() + 3600)})
@@ -233,3 +234,27 @@ def test_decision_id_cannot_escape_path(env):
                 {"accessToken": jwt(time.time() + 3600)})
     bc.decision("행정심판", "../../auth/renew")
     assert bc.http.calls[-1][1] == "/administrative-appeals/view/..%2F..%2Fauth%2Frenew"
+
+
+def test_api_url_accepts_bigcase_and_normalizes():
+    assert bigcase._api_url("/esapi/x") == "https://bigcase.ai/api/v1/esapi/x"
+    assert bigcase._api_url("https://bigcase.ai/api/v1/esapi/x") == "https://bigcase.ai/api/v1/esapi/x"
+    assert bigcase._api_url("https://BIGCASE.AI/api/v1/x") == "https://bigcase.ai/api/v1/x"
+    assert "\t" not in bigcase._api_url("https://bigcase.ai\t/api/v1/x")
+
+
+def test_http_404_message_matches_casesearch_contract():
+    """casesearch.py 는 stderr 의 「HTTP 404」 로 「없음」을 가른다 — 그 문구 계약."""
+    bc = client({("get", "/esapi/cases/match_view"): Resp(404, {"message": "없음"})}, {"accessToken": jwt(time.time() + 3600)})
+    with pytest.raises(bigcase.BigcaseError, match=r"HTTP 404"):
+        bc.case("대법원", "2099다99999")
+
+
+def test_stdout_is_utf8_on_cp949_console(tmp_path):
+    """한국어 Windows 콘솔(cp949)에서도 출력은 UTF-8 — casesearch.py 가 UTF-8 로 읽는다."""
+    import os
+    import subprocess
+    script = Path(__file__).resolve().parents[2] / "skills" / "case-search" / "scripts" / "bigcase.py"
+    env = {**os.environ, "PYTHONIOENCODING": "cp949", "CASE_SEARCH_HOME": str(tmp_path)}
+    out = subprocess.run([sys.executable, str(script), "--help"], capture_output=True, env=env).stdout
+    assert "빅케이스" in out.decode("utf-8")

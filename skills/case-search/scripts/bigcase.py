@@ -24,7 +24,7 @@
   case <법원> <사건번호> | case <판례 URL> [--raw]
                           판결문 전문(Markdown) — 판시사항·요지·주문·이유·심급
   get <경로> · post <경로> [--json '{...}']
-                          /api/v1 아래 인증 요청(API 탐색용), JSON 출력
+                          /api/v1 아래 인증 요청(API 탐색용), JSON 출력 — https://bigcase.ai 밖 절대 주소는 거부
   forget                  키체인 항목·설정·토큰 파일 삭제
 
 자격증명 보관(사용자마다 자기 빅케이스 계정):
@@ -35,7 +35,7 @@
 비밀번호는 명령행 인자로 받지 않는다. 입력 경로: 터미널 getpass · 터미널이 없으면 OS 입력 창
 (macOS osascript · Windows Get-Credential) · 자동화면 --password-stdin.
 
-API(2026-10-15 bigcase.ai Next.js 번들에서 발굴·실측, 상세 docs/bigcase-api.md):
+API(2026-10-15 bigcase.ai Next.js 번들에서 발굴·실측, 상세 docs/case-search/bigcase-api.md):
 - POST /api/v1/auth/unified-signin {email, password}
   → 200 {signInStatus, accountType, user, accessToken, refreshToken}.
   signInStatus 가 normal·not-exist-intg·integrated 일 때만 프론트가 로그인 성공으로 본다.
@@ -63,7 +63,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from urllib.parse import quote, unquote, urlparse
+from urllib.parse import quote, unquote, urlparse, urlunparse
 
 API = "https://bigcase.ai/api/v1"
 KEYRING_SERVICE = os.environ.get("BIGCASE_KEYRING_SERVICE", "case-search-bigcase")
@@ -351,12 +351,12 @@ class Bigcase:
 
 def _api_url(path: str) -> str:
     """경로 → 빅케이스 API 주소. Bearer 토큰이 붙으므로 https://bigcase.ai 밖의 절대 주소는 거부한다."""
-    if "://" not in path:
+    u, api = urlparse(path.strip()), urlparse(API)
+    if not u.scheme:
         return f"{API}/{path.lstrip('/')}"
-    u, api = urlparse(path), urlparse(API)
-    if (u.scheme, u.netloc) != (api.scheme, api.netloc):
+    if (u.scheme.lower(), u.hostname, u.port, u.username) != (api.scheme, api.hostname, None, None):
         raise BigcaseError(f"빅케이스({api.scheme}://{api.netloc}) 밖 주소에는 인증 요청을 보내지 않습니다: {u.scheme}://{u.netloc}")
-    return path
+    return urlunparse(u._replace(scheme=api.scheme, netloc=api.netloc))  # 검사한 값 그대로 보낸다
 
 
 def case_url(court: str | None, case_number: str | None) -> str | None:
@@ -484,6 +484,9 @@ def cmd_status(_a) -> int:
 
 
 def main() -> int:
+    for stream in (sys.stdout, sys.stderr):  # 한국어 Windows 콘솔(cp949)에서도 UTF-8 — casesearch.py 가 UTF-8 로 읽는다
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser(prog="bigcase", description="빅케이스(bigcase.ai) 로그인·판례 검색·전문 조회")
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("setup")

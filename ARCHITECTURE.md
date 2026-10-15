@@ -12,6 +12,9 @@
                               ├─ cite_check.py   조문·판례를 법제처 원문과 정확 일치 대조(lawapi.py)
                               │                  법제처에 없는 판례는 빅케이스 1회(casesearch.py → uv run skills/case-search/scripts/bigcase.py, 로그인 때만)
                               └─ render_docx.py  초안·의도대응표 .docx
+
+빅케이스 요청 → skills/case-search/SKILL.md ─┬─ uv run bigcase.py <명령>   검색·전문·유사 판례·결정례
+/lawfirm:case-search-setup ──────────────────┴─ uv run bigcase.py setup    자격증명(OS 입력 창 → 키체인)
 ```
 
 모델이 판단할 일(인터뷰 문장, 초안 본문)과 결정론으로 끝낼 일(채점, 설계 해석, 준수 검사, 인용 대조, 렌더)을 나눈다. 결정론 쪽은 전부 스크립트이고 테스트가 있다.
@@ -32,6 +35,6 @@ L3 안의 방향: `_paths` ← `state` ← `intent`·`memo`·`check_draft` ← `
 ## 교차 관심사
 
 - **경로·저장**: `_paths.py` 하나 — 작업 폴더·사건 키 결정, 원자 저장(임시 파일 → 교체), 해시, 금액 표기·파싱, JSON 출력, 의도 서명(`intent_signature`·`review_current` — 유불리 검토가 지금 의도에 대한 것인지). 법제처 Open API 호출·키(OC) 보관은 `lawapi.py` 하나 — 키는 작업 폴더 config.json(0600)에 두고 어떤 출력·캐시에도 쓰지 않는다.
-- **재현성**: `INTENT_BRIEF_TODAY`(`_paths.today()` 의 「오늘」 고정 — 테스트·재생), `INTENT_BRIEF_LAW_URL`(가짜 법제처 서버, 개발·테스트 전용), `INTENT_BRIEF_LAW_OC`(키 — `LAW_API_OC` 보다 먼저), `INTENT_BRIEF_UV`(uv 경로), `INTENT_BRIEF_NO_CASESEARCH`(빅케이스 끔 — 테스트는 늘 켬). case-search 가 없거나 로그인 안 돼 있으면 법제처만 쓴다.
+- **재현성**: `INTENT_BRIEF_TODAY`(`_paths.today()` 의 「오늘」 고정 — 테스트·재생), `INTENT_BRIEF_LAW_URL`(가짜 법제처 서버, 개발·테스트 전용), `INTENT_BRIEF_LAW_OC`(키 — `LAW_API_OC` 보다 먼저), `INTENT_BRIEF_UV`(uv 경로), `INTENT_BRIEF_NO_CASESEARCH`(빅케이스 끔 — 테스트는 늘 켬). 빅케이스 쪽은 `CASE_SEARCH_HOME`(보관 폴더, 기본 `~/.case-search`), `BIGCASE_ID`·`BIGCASE_PW`(키체인보다 우선), `BIGCASE_KEYRING_SERVICE`(키체인 서비스 이름). case-search 가 없거나 로그인 안 돼 있으면 법제처만 쓴다.
 - **원격 장애**: `lawapi.py` 가 키 없음(`no_key` — 대조를 멈추고 키를 받는다)·키 오류(사용자 검증 실패·IP 미등록)·서버 장애(연결 실패·5xx·빈 응답)·형식 변경을 나눈다. 장애여도 초안 작성은 계속한다.
 - **개인정보**: 사건 자료는 작업 폴더와 사건 폴더에만 남는다. `state.py purge` 로 지운다.

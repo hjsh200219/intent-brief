@@ -35,24 +35,18 @@ FAKE_UV = "#!%s\nimport subprocess, sys\na = sys.argv[1:]\nassert a[0] == 'run'\
 
 @pytest.fixture
 def plugin(tmp_path, monkeypatch):
-    """가짜 Claude 설정 폴더에 case-search 설치 기록 + 가짜 uv."""
-    cfg = tmp_path / "claude"
-    inst = tmp_path / "cache" / "case-search" / "0.3.1"
+    """가짜 bigcase.py(같은 플러그인 자리) + 가짜 uv."""
+    inst = tmp_path / "plugin" / "skills" / "case-search"
     (inst / "scripts").mkdir(parents=True)
     script = inst / "scripts" / "bigcase.py"
     script.write_text(FAKE_BIGCASE, encoding="utf-8")
-    (cfg / "plugins").mkdir(parents=True)
-    (cfg / "plugins" / "installed_plugins.json").write_text(json.dumps(
-        {"version": 2, "plugins": {"case-search@case-search": [{"scope": "user", "installPath": str(inst), "version": "0.3.1"}]}}),
-        encoding="utf-8")
     uv = tmp_path / "uv"
     uv.write_text(FAKE_UV, encoding="utf-8")
     uv.chmod(uv.stat().st_mode | stat.S_IEXEC)
-    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cfg))
     monkeypatch.setenv("INTENT_BRIEF_UV", str(uv))
     monkeypatch.delenv("INTENT_BRIEF_NO_CASESEARCH", raising=False)
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
-    monkeypatch.setattr(CS, "BUNDLED", str(tmp_path / "no-bundled" / "bigcase.py"))  # 설치본 경로를 시험
+    monkeypatch.setattr(CS, "BUNDLED", str(script))  # 같은 플러그인의 bigcase.py 자리에 가짜를 둔다
 
     class Ctl:
         def mode(self, m):
@@ -66,7 +60,6 @@ def plugin(tmp_path, monkeypatch):
 
 def test_not_installed(tmp_path, monkeypatch):
     monkeypatch.setattr(CS, "BUNDLED", str(tmp_path / "no-bundled" / "bigcase.py"))
-    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "none"))
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     monkeypatch.delenv("INTENT_BRIEF_NO_CASESEARCH", raising=False)
     st = CS.detect()
@@ -80,17 +73,17 @@ def test_bundled_script_is_default():
     assert os.path.isfile(CS.BUNDLED)
 
 
-def test_bundled_preferred_over_installed(plugin, tmp_path, monkeypatch):
-    bundled = tmp_path / "bundled" / "bigcase.py"
-    bundled.parent.mkdir()
-    bundled.write_text("", encoding="utf-8")
-    monkeypatch.setattr(CS, "BUNDLED", str(bundled))
-    assert CS.find_script() == str(bundled)
+def test_old_case_search_install_is_never_used(plugin, monkeypatch, tmp_path):
+    """옛 case-search 설치본(토큰 호스트 검사 없는 0.3.x)으로 빠지지 않는다 — 같은 플러그인 것만 쓴다."""
+    monkeypatch.setattr(CS, "BUNDLED", str(tmp_path / "no-bundled" / "bigcase.py"))
+    assert CS.find_script() is None and CS.detect()["available"] is False
 
 
-def test_legacy_case_search_install_found(plugin, tmp_path):
-    """옛 case-search@case-search 설치본(이전 기간)도 찾는다 — 픽스처가 그 키로 설치 기록을 만든다."""
-    assert CS.find_script().endswith(os.path.join("0.3.1", "scripts", "bigcase.py"))
+def test_korean_output_survives_cp949_console(plugin, monkeypatch):
+    """한국어 Windows 콘솔(cp949)에서도 하위 프로세스 출력을 UTF-8 로 받는다."""
+    monkeypatch.setenv("PYTHONIOENCODING", "cp949")
+    hit = CS.client().case("대법원", "2014다26187")
+    assert hit["number"] == "2014다26187" and hit["expression"].endswith("판결 대여금")
 
 
 def test_detect_and_status(plugin):
@@ -139,14 +132,14 @@ def test_find_exact_by_search_when_court_unknown(plugin):
 def test_non_dict_json_is_search_error(plugin, tmp_path):
     import casesearch as CS2
     c = CS.client()
-    p = [x for x in (tmp_path / "cache").rglob("bigcase.py")][0]
+    p = [x for x in (tmp_path / "plugin").rglob("bigcase.py")][0]
     p.write_text("import json; print(json.dumps([1, 2]))\n", encoding="utf-8")
     with pytest.raises(CS2.SearchError):
         c.case("대법원", "2014다26187")
 
 
 def test_error_masks_email(plugin, tmp_path):
-    p = [x for x in (tmp_path / "cache").rglob("bigcase.py")][0]
+    p = [x for x in (tmp_path / "plugin").rglob("bigcase.py")][0]
     p.write_text("import sys; sys.stderr.write('✗ lawyer@firm.kr 로그인 실패\\n'); sys.exit(1)\n", encoding="utf-8")
     c = CS.Client(str(p), CS.find_uv())
     with pytest.raises(CS.SearchError) as e:
