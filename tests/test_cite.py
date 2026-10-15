@@ -127,6 +127,61 @@ def test_cache_masks_key(tmp_path):
         assert "realkey" not in open(os.path.join(tmp_path, "cite", n), encoding="utf-8").read()
 
 
+class FakeExternal:
+    def __init__(self, hit=None, exc=None):
+        self.hit, self.exc, self.calls = hit, exc, []
+
+    def find_exact(self, number, court=None):
+        self.calls.append((number, court))
+        if self.exc:
+            raise self.exc
+        return self.hit
+
+
+MISSING = [({"nb": "2014다26187"}, rec("drf_prec_nb_empty.json")),
+           ({"query": "2014다26187", "search": 2}, {"PrecSearch": {"totalCnt": "5"}})]
+HIT = {"number": "2014다26187", "court": "대법원", "date": "20140710", "expression": "대법원 2014. 7. 10. 선고 2014다26187 판결 대여금",
+       "outcome": "상고기각", "restricted": False}
+C2014 = {"kind": "case", "number": "2014다26187", "court": "대법원", "date": "20140710"}
+
+
+def test_external_fallback_found(tmp_path):
+    ext = FakeExternal(HIT)
+    c = C.Checker(str(tmp_path / "cite"), client=FakeLaw(MISSING), external=ext)
+    r = c.check(C2014)
+    assert r["status"] == "external" and "빅케이스" in r["detail"] and ext.calls == [("2014다26187", "대법원")]
+    # 캐시 — 다시 실행해도 빅케이스를 다시 부르지 않는다
+    ext2 = FakeExternal(None)
+    assert C.Checker(str(tmp_path / "cite"), client=FakeLaw([]), external=ext2).check(C2014)["status"] == "external"
+    assert ext2.calls == []
+
+
+def test_external_not_for_confirmed(tmp_path):
+    ext = FakeExternal(HIT)
+    C.Checker(str(tmp_path / "cite"), client=FakeLaw(P2016), external=ext).check(
+        {"kind": "case", "number": "2016다225353", "court": "대법원", "date": "20170221"})
+    assert ext.calls == []  # 법제처에서 확인되면 빅케이스는 부르지 않는다
+
+
+def test_external_date_mismatch(tmp_path):
+    r = C.Checker(str(tmp_path / "cite"), client=FakeLaw(MISSING), external=FakeExternal(HIT)).check(dict(C2014, date="20140711"))
+    assert r["status"] == "unverified" and "빅케이스" in r["detail"] and "20140710" in r["detail"]
+
+
+def test_external_missing_or_error_keeps_unverified(tmp_path):
+    import casesearch as CS
+    r = C.Checker(str(tmp_path / "a"), client=FakeLaw(MISSING), external=FakeExternal(None)).check(C2014)
+    assert r["status"] == "unverified" and "빅케이스에도 없음" in r["detail"]
+    r = C.Checker(str(tmp_path / "b"), client=FakeLaw(MISSING), external=FakeExternal(exc=CS.SearchError("x"))).check(C2014)
+    assert r["status"] == "unverified" and "빅케이스 조회 실패" in r["detail"]
+
+
+def test_tag_external(phrases):
+    md = "대법원 2014. 7. 10. 선고 2014다26187 판결 참조."
+    res = [{"text": "대법원 2014. 7. 10. 선고 2014다26187 판결", "pos": 0, "status": "external"}]
+    assert "[확인 필요: 법제처 원문 없음 — 빅케이스 존재 확인]" in C.tag_draft(md, res, phrases)
+
+
 def test_tag_draft_once(phrases):
     md = "본문 2099다99999 판결 참조."
     res = [{"text": "2099다99999 판결", "pos": 3, "status": "unverified"}]

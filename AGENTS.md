@@ -1,6 +1,6 @@
 # AGENTS.md — intent-brief
 
-변호사가 서면의 의도를 고르면 그 의도에 맞춘 민사 준비서면·답변서 초안(.docx)과 내부용 의도대응표를 만드는 Claude Code 플러그인. 스킬 1개(`intent-brief`). 법령·판례는 법제처 Open API 를 직접 부른다(키는 변호사에게 받아 저장, MCP 없음). 서버·DB·빌드 없음.
+변호사가 서면의 의도를 고르면 그 의도에 맞춘 민사 준비서면·답변서 초안(.docx)과 내부용 의도대응표를 만드는 Claude Code 플러그인. 스킬 1개(`intent-brief`). 법령·판례는 법제처 Open API 를 직접 부른다(키는 변호사에게 받아 저장, MCP 없음). case-search 플러그인이 설치·로그인돼 있으면 빅케이스를 보조로 연결한다. 서버·DB·빌드 없음.
 
 ## 지도
 
@@ -33,13 +33,14 @@ python3 dev/verify_docs.py                                                      
 2. 작업 폴더는 플러그인 밖 — macOS `~/.intent-brief/`, Windows `%LOCALAPPDATA%\intent-brief\`. `CLAUDE_PLUGIN_DATA` 는 uninstall 때 지워지므로 쓰지 않는다.
 3. 사건 폴더의 `사건메모.md` 는 `memo.py apply` 의 확인 토큰으로만 쓴다. 줄바꿈(CRLF)을 보존하고, 사본에 먼저 적용해 성공했을 때만 바꾼다.
 4. 법제처 키(OC)는 `lawapi.py` 만 다룬다 — 작업 폴더 config.json(0600)에 저장하고 출력·캐시·오류 문구에 값을 쓰지 않는다(URL 은 `OC=***` 로 가린다). 키가 없으면 대조를 멈추고 변호사에게 받는다.
-5. 인용 「확인됨」은 법제처 원문 **정확 일치**일 때만. 못 찾으면 `[확인 필요: 법제처 미확인]`, 서버 장애면 `[법제처 장애 — 미확인]`.
+5. 인용 「확인됨」은 법제처 원문 **정확 일치**일 때만(빅케이스에서만 찾은 것은 `external` — 「확인됨」과 섞지 않는다). 못 찾으면 `[확인 필요: 법제처 미확인]`, 서버 장애면 `[법제처 장애 — 미확인]`.
 6. 어떤 의도도 거부하지 않는다. 의도를 정하면 소송 전체 기준 유불리를 먼저 보여 주고(`intent_review`) 진행 여부는 변호사가 정한다 — 설계 확정은 지금 의도에 대한 「진행」 결정을 요구한다. 자료에 없는 사실은 지어내지 않고 `[확인 필요: …]` 로 둔다.
 
 ## 개발 규칙
 
 - 새 로직은 테스트를 먼저 쓴다(Red 확인 → Green). 커밋 본문에 Red/Green 을 적는다.
 - 하네스 데모 트리(`agent-lawfirm/docs/references/업무관리시스템_데모/`)는 읽기만 한다. 그 안에서 Python 을 import·실행하지 않는다(바이트코드가 생긴다). casedb 계약 테스트는 경로가 있을 때만 돈다.
+- 테스트는 이 PC 에 설치된 실제 case-search 를 부르지 않는다(`tests/conftest.py` 가 `INTENT_BRIEF_NO_CASESEARCH=1`). 빅케이스는 이용 범위상 사람 빈도로만 부른다.
 - `dev/replay.py`·`dev/e2e.py` 는 `claude -p` 를 여러 번 부른다(비용 발생). 판정 기준은 `dev/e2e.py` 의 `judge_run`. 선택 환경변수: `INTENT_BRIEF_TOKEN_FILE`(무인 실행 토큰 파일), `JEV_DIR`(블라인드 판별용 Jev 클라이언트), `INTENT_BRIEF_DEMO_DIR`(casedb 계약 테스트의 데모 원본).
 - 공개 repo 다. 픽스처의 인명·사건번호는 가명이며 실제 의뢰인 자료를 넣지 않는다.
 - 의도 목록·기본값 개정은 사용 통계(`intent.py stats`)를 근거로 한다.

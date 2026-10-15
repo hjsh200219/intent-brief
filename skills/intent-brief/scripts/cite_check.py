@@ -3,6 +3,8 @@
 모델이 검색 결과를 옮겨 적지 않는다 — 이 스크립트가 lawapi.py 로 법제처 DRF 를 직접 부른다(MCP 없음).
 판례는 사건번호 검색(nb) 결과의 사건번호가 정확히 같은 항목만 「확인됨」으로 본다. 「확인됨」은 그 조문·판례가
 존재한다는 뜻이며 인용의 적합성은 보증하지 않는다. 키(OC)가 없으면 대조하지 않고 멈춘다(태그도 붙이지 않는다).
+법제처에 원문이 없는 판례는 case-search(빅케이스)가 설치·로그인돼 있으면 한 건당 한 번 찾아 「external」로 표시한다 —
+「확인됨」(법제처 원문 정확 일치)과 섞지 않는다.
 
 사용:
   cite_check.py ping
@@ -19,6 +21,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _paths as P  # noqa: E402
+import casesearch as CS  # noqa: E402
 import lawapi as L  # noqa: E402
 
 
@@ -125,8 +128,10 @@ def _excerpt_case(d):
 
 
 class Checker:
-    def __init__(self, cache_dir, client=None, deadline=None):
+    def __init__(self, cache_dir, client=None, deadline=None, external=None):
         self.client = CachedClient(client or L.Client(), cache_dir, deadline)
+        self.external = external
+        self.ext_cache = os.path.join(cache_dir, "external")
 
     @property
     def calls(self):
@@ -158,7 +163,30 @@ class Checker:
         detail = "사건번호 정확 일치 없음(법제처 원문 없음)"
         if cited_by:
             detail += " · 이 번호를 인용한 다른 판결 %d건 검색됨 — 원문은 변호사가 확인" % cited_by
-        return {"status": "unverified", "detail": detail, "cited_by": cited_by}
+        res = {"status": "unverified", "detail": detail, "cited_by": cited_by}
+        return self._external(c, res) if self.external else res
+
+    def _external(self, c, res):
+        """법제처에 없을 때만 빅케이스 1회(캐시) — 있으면 external, 선고일이 다르면 unverified."""
+        key = hashlib.sha256(json.dumps([c["number"], c.get("court")], ensure_ascii=False).encode("utf-8")).hexdigest()[:24]
+        fp = os.path.join(self.ext_cache, key + ".json")
+        if os.path.exists(fp):
+            got = P.load_json(fp)
+        else:
+            try:
+                got = {"hit": self.external.find_exact(c["number"], c.get("court"))}
+            except CS.SearchError as e:
+                return dict(res, detail=res["detail"] + " · 빅케이스 조회 실패(%s)" % str(e)[:80])
+            os.makedirs(self.ext_cache, exist_ok=True)
+            P.atomic_write_json(fp, got)
+        hit = got.get("hit")
+        if not hit:
+            return dict(res, detail=res["detail"] + " · 빅케이스에도 없음")
+        where = "%s %s 선고%s" % (hit.get("court") or "", hit.get("date") or "", (", " + hit["outcome"]) if hit.get("outcome") else "")
+        if c.get("date") and hit.get("date") and hit["date"] != c["date"]:
+            return dict(res, detail="법제처 원문 없음 · 빅케이스 원문과 선고일 불일치(빅케이스 %s)" % hit["date"], external=hit)
+        return {"status": "external", "detail": "법제처 원문 없음 — 빅케이스에서 존재 확인(%s)" % where.strip(),
+                "external": hit, "cited_by": res.get("cited_by")}
 
     def check(self, c):
         try:
@@ -173,7 +201,8 @@ class Checker:
             return {"status": "pending", "detail": "시간 상한 — 다시 실행하면 캐시에서 이어 갑니다"}
 
 
-TAG_FOR = {"unverified": "unverified", "outage": "outage", "format_changed": "format_changed", "key_invalid": "key_invalid"}
+TAG_FOR = {"unverified": "unverified", "outage": "outage", "format_changed": "format_changed", "key_invalid": "key_invalid",
+           "external": "external"}
 
 
 def tag_draft(md, results, phrases):
@@ -193,11 +222,13 @@ def tag_draft(md, results, phrases):
     return md
 
 
-def run(draft_path, max_seconds=540, client=None):
+def run(draft_path, max_seconds=540, client=None, external="auto"):
     md = P.read_text(draft_path)
     work = os.path.dirname(os.path.abspath(draft_path))
     cites = extract(md)
-    chk = Checker(os.path.join(work, "cite"), client=client, deadline=time.time() + max_seconds)
+    if external == "auto":
+        external = CS.client() if any(c["kind"] == "case" for c in cites) else None
+    chk = Checker(os.path.join(work, "cite"), client=client, deadline=time.time() + max_seconds, external=external)
     results = []
     for c in cites:
         r = dict(c)
@@ -209,7 +240,7 @@ def run(draft_path, max_seconds=540, client=None):
     summary = {}
     for r in results:
         summary[r["status"]] = summary.get(r["status"], 0) + 1
-    out = {"complete": complete, "calls": chk.calls, "summary": summary, "results": results}
+    out = {"complete": complete, "calls": chk.calls, "summary": summary, "results": results, "casesearch": bool(external)}
     P.atomic_write_json(os.path.join(work, "cite_results.json"), out)
     return out
 

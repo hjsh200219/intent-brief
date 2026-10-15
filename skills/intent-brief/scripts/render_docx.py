@@ -243,10 +243,11 @@ def table_body(st, design, cite, draft_md):
         o.append(para("5. 의도 조합 해소", "Heading1"))
         o.append(table([["조합", "규칙", "설명"]] + [[c["pair"], c["rule"], c["note"]] for c in design["conflicts"]], [1400, 2000, 5955]))
     o.append(para("6. 법적 근거와 인용 대조", "Heading1"))
-    o.append(para("「확인됨」은 그 조문·판례가 법제처 원문에 존재한다는 뜻이며 인용의 적합성은 보증하지 않습니다. 「해석」은 원문 대조 대상이 아닙니다."))
+    o.append(para("「확인됨」은 그 조문·판례가 법제처 원문에 존재한다는 뜻이며 인용의 적합성은 보증하지 않습니다. 「빅케이스 확인」은 법제처에 원문이 없어 빅케이스(case-search)에서 같은 사건번호를 찾았다는 뜻입니다. 「해석」은 원문 대조 대상이 아닙니다."))
     o.append(table([["기본값 근거", "종류"]] + [[b["ref"], b["kind"]] for b in design["legal_basis"]], [7000, 2355]))
     if cite:
         lab = {"confirmed": "확인됨", "unverified": "미확인", "outage": "장애", "key_invalid": "키 오류",
+               "external": "빅케이스 확인(법제처 원문 없음)",
                "format_changed": "응답 형식 변경", "pending": "대조 중단"}
         o.append(table([["초안 인용", "상태", "원문·요지(존재 확인 — 적합성 미보증)"]] +
                        [[r["text"], lab.get(r["status"], r["status"]), r.get("excerpt") or r.get("detail") or ""] for r in cite["results"]],

@@ -10,6 +10,7 @@
                               ├─ (모델이 draft.md 작성)
                               ├─ check_draft.py  design.json 준수 검사
                               ├─ cite_check.py   조문·판례를 법제처 원문과 정확 일치 대조(lawapi.py)
+                              │                  법제처에 없는 판례는 빅케이스 1회(casesearch.py, 설치·로그인 때만)
                               └─ render_docx.py  초안·의도대응표 .docx
 ```
 
@@ -25,7 +26,7 @@
 | L3 런타임 | `skills/intent-brief/scripts/` | 표준 라이브러리, L1, 같은 레이어 |
 | L4 개발 | `dev/`, `tests/` | 전부 |
 
-L3 안의 방향: `_paths` ← `state` ← `intent`·`memo`·`check_draft` ← `render_docx`(`state` 는 각 파일 함수 안에서 지연 import). `score`·`lawapi` 는 `_paths` 만, `cite_check` 는 `_paths`·`lawapi` 를 쓴다. L3 는 L4 를 import 하지 않는다. 이 표는 `tests/test_params.py` 의 `test_runtime_import_direction` 이 강제한다.
+L3 안의 방향: `_paths` ← `state` ← `intent`·`memo`·`check_draft` ← `render_docx`(`state` 는 각 파일 함수 안에서 지연 import). `score`·`lawapi`·`casesearch` 는 `_paths` 만, `cite_check` 는 `_paths`·`lawapi`·`casesearch` 를 쓴다. L3 는 L4 를 import 하지 않는다. 이 표는 `tests/test_params.py` 의 `test_runtime_import_direction` 이 강제한다.
 
 ## 교차 관심사
 

@@ -16,6 +16,12 @@ F2 = os.path.join(FIXTURES, "F2", "260915_대여금(김대출) 피고측")
 F3 = os.path.join(FIXTURES, "F3", "260901_대여금 청구(홍길동) 메모없음")
 
 
+@pytest.fixture(autouse=True)
+def _no_real_casesearch(monkeypatch):
+    """테스트가 이 PC 에 설치된 실제 case-search(빅케이스 로그인)를 부르지 않게 — 필요한 테스트만 지운다."""
+    monkeypatch.setenv("INTENT_BRIEF_NO_CASESEARCH", "1")
+
+
 @pytest.fixture
 def home(tmp_path, monkeypatch):
     """작업 폴더를 임시 HOME 으로 — 런타임 기본 경로 로직을 그대로 쓴다."""
