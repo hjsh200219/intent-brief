@@ -1,6 +1,6 @@
 # 법령·판례 조회 (이 플러그인의 모든 스킬 공용)
 
-MCP 를 쓰지 않는다. 법제처 Open API 를 직접 부르는 스크립트 `lawapi.py` 와, 설치돼 있으면 빅케이스(case-search) 연결 `casesearch.py` 를 쓴다. 둘 다 intent-brief 스킬 폴더에 있다.
+MCP 를 쓰지 않는다. 법제처 Open API 를 직접 부르는 스크립트 `lawapi.py` 와, 빅케이스에 로그인돼 있으면 빅케이스 연결 `casesearch.py` 를 쓴다. 둘 다 intent-brief 스킬 폴더에 있다. 빅케이스 판례 전문·유사 판례·결정례를 본격적으로 찾을 때는 같은 플러그인의 `case-search` 스킬을 쓴다.
 
 ## 준비
 

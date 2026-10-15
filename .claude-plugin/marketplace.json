@@ -1,22 +1,36 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "intent-brief",
-  "description": "의도 기반 민사 서면(준비서면·답변서) 작성과 법률 문서 스킬 6종 플러그인 마켓플레이스. AI는 실수할 수 있으며 최종 검토는 사용 변호사의 책임입니다.",
+  "name": "lawfirm",
+  "description": "한국 변호사용 법률 업무 플러그인(lawfirm) 마켓플레이스 — 의도 기반 민사 서면·법률 문서 스킬 6종·빅케이스 판례 검색. AI는 실수할 수 있으며 최종 검토는 사용 변호사의 책임입니다.",
   "owner": {
     "name": "hoshin"
   },
   "plugins": [
     {
-      "name": "intent-brief",
+      "name": "lawfirm",
       "source": "./",
-      "description": "변호사가 고른 서면 의도에 맞춰 민사 준비서면·답변서 초안과 내부용 의도대응표를 만든다. 내용증명·고소장·형사합의서·사실확인서·형사절차 시뮬레이터·양형 예측 스킬 내장. 인용은 법제처 Open API 원문과 정확 일치로 대조한다.",
-      "version": "0.3.0",
+      "description": "의도 기반 민사 준비서면·답변서 초안과 의도대응표, 내용증명·고소장·형사합의서·사실확인서·형사절차 시뮬레이터·양형 예측, 빅케이스 판례 검색. 인용은 법제처 Open API 원문과 정확 일치로 대조한다.",
+      "version": "0.4.0",
       "category": "legal",
-      "tags": ["korean-law", "legal", "litigation", "준비서면", "답변서", "내용증명", "고소장", "형사"],
+      "tags": [
+        "korean-law",
+        "legal",
+        "litigation",
+        "준비서면",
+        "답변서",
+        "내용증명",
+        "고소장",
+        "형사",
+        "빅케이스",
+        "판례검색"
+      ],
       "author": {
         "name": "hoshin"
       },
-      "homepage": "https://github.com/hjsh200219/intent-brief"
+      "homepage": "https://github.com/hjsh200219/lawfirm"
     }
-  ]
+  ],
+  "renames": {
+    "intent-brief": "lawfirm"
+  }
 }

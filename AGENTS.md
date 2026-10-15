@@ -1,17 +1,18 @@
-# AGENTS.md — intent-brief
+# AGENTS.md — lawfirm
 
-변호사가 서면의 의도를 고르면 그 의도에 맞춘 민사 준비서면·답변서 초안(.docx)과 내부용 의도대응표를 만드는 Claude Code 플러그인. 스킬 7개 — `intent-brief`(본체) + thechain.lawyer 법률 문서 스킬 6개(lyn-lawfirm 에서 내장). 법령·판례는 법제처 Open API 를 직접 부른다(키는 변호사에게 받아 저장, MCP 없음). case-search 플러그인이 설치·로그인돼 있으면 빅케이스를 보조로 연결한다. 서버·DB·빌드 없음.
+한국 변호사용 법률 업무 Claude Code 플러그인. 스킬 8개 — `intent-brief`(의도 기반 민사 준비서면·답변서 초안 + 내부용 의도대응표) + `case-search`(빅케이스 판례 검색) + thechain.lawyer 법률 문서 스킬 6개(lyn-lawfirm 에서 내장). 0.4.0 에서 intent-brief·case-search·lyn-lawfirm 플러그인을 합쳤다(옛 repo 둘은 이전 안내용 마켓플레이스만 남는다). 법령·판례는 법제처 Open API 를 직접 부른다(키는 변호사에게 받아 저장, MCP 없음). 빅케이스에 로그인돼 있으면 민사 서면 인용 대조에 보조로 연결한다. 서버·DB·빌드 없음.
 
 ## 지도
 
 | 무엇 | 어디 |
 |---|---|
 | 매니페스트 | `.claude-plugin/plugin.json`·`marketplace.json`(버전 둘 다 맞춘다) |
-| 스킬 절차(모델이 읽는 정본) | `skills/intent-brief/SKILL.md` |
+| 스킬 절차(모델이 읽는 정본) | `skills/intent-brief/SKILL.md` · `skills/case-search/SKILL.md` |
+| 빅케이스 클라이언트(uv inline 의존성) | `skills/case-search/scripts/bigcase.py` · 설정 명령 `commands/case-search-setup.md` · API 근거 [docs/case-search/bigcase-api.md](docs/case-search/bigcase-api.md) · LBOX 정찰 [docs/case-search/lbox/](docs/case-search/lbox/README.md) |
 | 내장 스킬 6개(lyn-lawfirm `9d620a9` 복사, 이후 따로 감) | `skills/certified-letter/` 외 5개 — 법령·판례는 `references/law-lookup.md`, CTA 는 `references/cta-config.md` |
 | 의도·채점·문구 데이터 | `skills/intent-brief/references/` — `intent-params.json`(섹션 어휘·충돌표), `intents.md`, `scoring.md`, `phrases.json`, `brief-types/` |
 | 런타임 스크립트 | `skills/intent-brief/scripts/` — 역할·의존 방향은 [ARCHITECTURE.md](ARCHITECTURE.md) |
-| 테스트 | `tests/` — 픽스처 F1(하네스 데모 사본)·F2·F3(합성), `recorded/`(녹화 응답), `e2e/`(답 파일) |
+| 테스트 | `tests/` — 픽스처 F1(하네스 데모 사본)·F2·F3(합성), `recorded/`(녹화 응답), `e2e/`(답 파일), `case_search/`(빅케이스 오프라인 — scrapling·keyring 없으면 건너뜀) |
 | 개발 전용 도구 | `dev/` — `replay.py`(무인 재생)·`e2e.py`(E1–E8 판정)·`smoke.py`(받는 PC 실기 점검)·`verify_docs.py` |
 | 품질 기준·부채 | [docs/QUALITY.md](docs/QUALITY.md) · [docs/exec-plans/tech-debt-tracker.md](docs/exec-plans/tech-debt-tracker.md) |
 | 구현 전 함정 목록 | [docs/harness/harness-setup.md](docs/harness/harness-setup.md) |
@@ -22,16 +23,17 @@
 ```
 uv run --no-project --with pytest --with python-docx==1.2.0 pytest tests/            # 전체(문서 검사 포함)
 uv run --no-project --python 3.9 --with pytest --with python-docx==1.2.0 pytest tests/  # 받는 PC 최저 버전
+uv run --no-project --with "scrapling[fetchers]>=0.4.11" --with keyring --with pytest --with python-docx==1.2.0 pytest tests/case_search -q  # 빅케이스
 claude plugin validate --strict .                                                     # 매니페스트
 python3 dev/verify_docs.py                                                             # 문서 링크·버전·줄 수
 ```
 
-`python-docx` 는 테스트에서 생성 docx 를 읽어 보는 데만 쓴다. 런타임 의존이 아니다.
+`python-docx` 는 테스트에서 생성 docx 를 읽어 보는 데만 쓴다. 런타임 의존이 아니다. 첫 두 줄에서 `tests/case_search/` 는 의존성이 없어 건너뛴다(skipped) — 셋째 줄로 따로 돌린다.
 
 ## 불변 조건 (어기면 받는 PC 에서 깨진다)
 
-1. intent-brief 런타임 스크립트(`skills/intent-brief/scripts/`)는 **표준 라이브러리만, Python 3.9 문법**(내장 스킬의 `generate.js` 는 Node). `tests/test_params.py` 가 import·문법을 검사한다.
-2. 작업 폴더는 플러그인 밖 — macOS `~/.intent-brief/`, Windows `%LOCALAPPDATA%\intent-brief\`. `CLAUDE_PLUGIN_DATA` 는 uninstall 때 지워지므로 쓰지 않는다.
+1. intent-brief 런타임 스크립트(`skills/intent-brief/scripts/`)는 **표준 라이브러리만, Python 3.9 문법**(내장 스킬의 `generate.js` 는 Node). `tests/test_params.py` 가 import·문법을 검사한다. 외부 패키지가 필요한 `bigcase.py` 는 `skills/case-search/scripts/` 에만 두고 intent-brief 쪽은 `casesearch.py` 가 `uv run` 으로 부른다(import 하지 않는다).
+2. 작업 폴더는 플러그인 밖 — macOS `~/.intent-brief/`, Windows `%LOCALAPPDATA%\intent-brief\`. `CLAUDE_PLUGIN_DATA` 는 uninstall 때 지워지므로 쓰지 않는다. 플러그인 이름이 lawfirm 으로 바뀌어도 이 이름은 바꾸지 않는다(진행 중 사건·법제처 키가 끊긴다). 빅케이스도 마찬가지로 키체인 서비스 `case-search-bigcase`·`~/.case-search/` 를 유지한다.
 3. 사건 폴더의 `사건메모.md` 는 `memo.py apply` 의 확인 토큰으로만 쓴다. 줄바꿈(CRLF)을 보존하고, 사본에 먼저 적용해 성공했을 때만 바꾼다.
 4. 법제처 키(OC)는 `lawapi.py` 만 다룬다 — 작업 폴더 config.json(0600)에 저장하고 출력·캐시·오류 문구에 값을 쓰지 않는다(URL 은 `OC=***` 로 가린다). 키가 없으면 대조를 멈추고 변호사에게 받는다.
 5. 인용 「확인됨」은 법제처 원문 **정확 일치**일 때만(빅케이스에서만 찾은 것은 `external` — 「확인됨」과 섞지 않는다). 못 찾으면 `[확인 필요: 법제처 미확인]`, 서버 장애면 `[법제처 장애 — 미확인]`.
@@ -41,7 +43,7 @@ python3 dev/verify_docs.py                                                      
 
 - 새 로직은 테스트를 먼저 쓴다(Red 확인 → Green). 커밋 본문에 Red/Green 을 적는다.
 - 하네스 데모 트리(`agent-lawfirm/docs/references/업무관리시스템_데모/`)는 읽기만 한다. 그 안에서 Python 을 import·실행하지 않는다(바이트코드가 생긴다). casedb 계약 테스트는 경로가 있을 때만 돈다.
-- 테스트는 이 PC 에 설치된 실제 case-search 를 부르지 않는다(`tests/conftest.py` 가 `INTENT_BRIEF_NO_CASESEARCH=1`). 빅케이스는 이용 범위상 사람 빈도로만 부른다.
+- 테스트는 실제 빅케이스를 부르지 않는다(`tests/conftest.py` 가 `INTENT_BRIEF_NO_CASESEARCH=1`, `tests/case_search/` 는 가짜 HTTP). 빅케이스는 이용 범위상 사람 빈도로만 부르고, 대량 수집·재배포는 하지 않는다. 실계정 자료(토큰·비밀번호·조회한 판결의 실명)는 커밋하지 않는다.
 - `dev/replay.py`·`dev/e2e.py` 는 `claude -p` 를 여러 번 부른다(비용 발생). 판정 기준은 `dev/e2e.py` 의 `judge_run`. 선택 환경변수: `INTENT_BRIEF_TOKEN_FILE`(무인 실행 토큰 파일), `JEV_DIR`(블라인드 판별용 Jev 클라이언트), `INTENT_BRIEF_DEMO_DIR`(casedb 계약 테스트의 데모 원본).
 - 공개 repo 다. 픽스처의 인명·사건번호는 가명이며 실제 의뢰인 자료를 넣지 않는다.
 - 의도 목록·기본값 개정은 사용 통계(`intent.py stats`)를 근거로 한다.

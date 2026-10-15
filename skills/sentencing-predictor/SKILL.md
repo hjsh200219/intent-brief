@@ -114,7 +114,7 @@ WebFetch prompt 예시:
 
 ### 3-A. 판례 검색(법제처 Open API)
 
-> **법령·판례 조회** — MCP 를 쓰지 않고 법제처 Open API 를 직접 부른다(intent-brief 의 `lawapi.py`). 키(OC) 등록·스크립트 위치·명령 전체는 `../../references/law-lookup.md` 를 먼저 읽는다. case-search(빅케이스)가 설치·로그인돼 있으면 판례 검색에 함께 쓴다.
+> **법령·판례 조회** — MCP 를 쓰지 않고 법제처 Open API 를 직접 부른다(intent-brief 의 `lawapi.py`). 키(OC) 등록·스크립트 위치·명령 전체는 `../../references/law-lookup.md` 를 먼저 읽는다. 빅케이스에 로그인돼 있으면(같은 플러그인의 `case-search` 스킬, `/lawfirm:case-search-setup`) 판례 검색에 함께 쓴다.
 
 `lawapi.py prec-search "<키워드>" --fulltext` 로 유사 사건 판례를 검색한다(빅케이스가 있으면 `casesearch.py search` 도). 검색어는 핵심 키워드를 2~3개 조합한다.
 

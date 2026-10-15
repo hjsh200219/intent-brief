@@ -1,4 +1,4 @@
-# ARCHITECTURE — intent-brief
+# ARCHITECTURE — lawfirm
 
 ## 흐름
 
@@ -10,7 +10,7 @@
                               ├─ (모델이 draft.md 작성)
                               ├─ check_draft.py  design.json 준수 검사
                               ├─ cite_check.py   조문·판례를 법제처 원문과 정확 일치 대조(lawapi.py)
-                              │                  법제처에 없는 판례는 빅케이스 1회(casesearch.py, 설치·로그인 때만)
+                              │                  법제처에 없는 판례는 빅케이스 1회(casesearch.py → uv run skills/case-search/scripts/bigcase.py, 로그인 때만)
                               └─ render_docx.py  초안·의도대응표 .docx
 ```
 
@@ -22,8 +22,9 @@
 |---|---|---|
 | L0 매니페스트 | `.claude-plugin/` | 없음 |
 | L1 데이터 | `skills/intent-brief/references/` | 없음 |
-| L2 절차 | `skills/intent-brief/SKILL.md`, 내장 스킬 6개 `skills/*/SKILL.md` | L1, L3(명령으로 호출), 공용 `references/`(law-lookup·cta-config) |
+| L2 절차 | `skills/intent-brief/SKILL.md`, `skills/case-search/SKILL.md`, 내장 스킬 6개 `skills/*/SKILL.md`, `commands/` | L1, L3(명령으로 호출), 공용 `references/`(law-lookup·cta-config) |
 | L3 런타임 | `skills/intent-brief/scripts/` | 표준 라이브러리, L1, 같은 레이어 |
+| L3b 빅케이스 런타임 | `skills/case-search/scripts/bigcase.py` | uv inline 의존성(Scrapling·keyring) — L3 는 import 하지 않고 하위 프로세스로만 부른다 |
 | L4 개발 | `dev/`, `tests/` | 전부 |
 
 L3 안의 방향: `_paths` ← `state` ← `intent`·`memo`·`check_draft` ← `render_docx`(`state` 는 각 파일 함수 안에서 지연 import). `score`·`lawapi`·`casesearch` 는 `_paths` 만, `cite_check` 는 `_paths`·`lawapi`·`casesearch` 를 쓴다. L3 는 L4 를 import 하지 않는다. 이 표는 `tests/test_params.py` 의 `test_runtime_import_direction` 이 강제한다.

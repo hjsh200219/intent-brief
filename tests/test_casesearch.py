@@ -52,6 +52,7 @@ def plugin(tmp_path, monkeypatch):
     monkeypatch.setenv("INTENT_BRIEF_UV", str(uv))
     monkeypatch.delenv("INTENT_BRIEF_NO_CASESEARCH", raising=False)
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setattr(CS, "BUNDLED", str(tmp_path / "no-bundled" / "bigcase.py"))  # 설치본 경로를 시험
 
     class Ctl:
         def mode(self, m):
@@ -64,12 +65,32 @@ def plugin(tmp_path, monkeypatch):
 
 
 def test_not_installed(tmp_path, monkeypatch):
+    monkeypatch.setattr(CS, "BUNDLED", str(tmp_path / "no-bundled" / "bigcase.py"))
     monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "none"))
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     monkeypatch.delenv("INTENT_BRIEF_NO_CASESEARCH", raising=False)
     st = CS.detect()
     assert st["available"] is False and "설치" in st["reason"]
     assert CS.client() is None
+
+
+def test_bundled_script_is_default():
+    """lawfirm 0.4.0 부터 case-search 는 같은 플러그인 안에 있다 — 기본 경로가 실제 파일을 가리켜야 한다."""
+    assert CS.BUNDLED.replace(os.sep, "/").endswith("skills/case-search/scripts/bigcase.py")
+    assert os.path.isfile(CS.BUNDLED)
+
+
+def test_bundled_preferred_over_installed(plugin, tmp_path, monkeypatch):
+    bundled = tmp_path / "bundled" / "bigcase.py"
+    bundled.parent.mkdir()
+    bundled.write_text("", encoding="utf-8")
+    monkeypatch.setattr(CS, "BUNDLED", str(bundled))
+    assert CS.find_script() == str(bundled)
+
+
+def test_legacy_case_search_install_found(plugin, tmp_path):
+    """옛 case-search@case-search 설치본(이전 기간)도 찾는다 — 픽스처가 그 키로 설치 기록을 만든다."""
+    assert CS.find_script().endswith(os.path.join("0.3.1", "scripts", "bigcase.py"))
 
 
 def test_detect_and_status(plugin):

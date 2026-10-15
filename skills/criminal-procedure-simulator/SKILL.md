@@ -18,7 +18,7 @@ description: "형사절차 시뮬레이터. 사용자의 상황(피의자/피고
 
 이 스킬은 사용자의 혐의·상황에 맞는 실제 판례와 최신 법령 조문을 확인해서 답변에 반영해야 한다. 판례 없이 일반론만 제시하면 사용자에게 실질적 도움이 크게 줄어든다. 그래서 **응답을 시작하기 전에 법제처 Open API 조회가 되는지 반드시 확인**한다.
 
-> **법령·판례 조회** — MCP 를 쓰지 않고 법제처 Open API 를 직접 부른다(intent-brief 의 `lawapi.py`). 키(OC) 등록·스크립트 위치·명령 전체는 `../../references/law-lookup.md` 를 먼저 읽는다. case-search(빅케이스)가 설치·로그인돼 있으면 판례 검색에 함께 쓴다.
+> **법령·판례 조회** — MCP 를 쓰지 않고 법제처 Open API 를 직접 부른다(intent-brief 의 `lawapi.py`). 키(OC) 등록·스크립트 위치·명령 전체는 `../../references/law-lookup.md` 를 먼저 읽는다. 빅케이스에 로그인돼 있으면(같은 플러그인의 `case-search` 스킬, `/lawfirm:case-search-setup`) 판례 검색에 함께 쓴다.
 
 쓰는 명령:
 - `lawapi.py law <법령명> --article <조>` — 법령 확인·조문 본문(예: `law "형사소송법" --article 245-7`)

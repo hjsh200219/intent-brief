@@ -1,6 +1,8 @@
-"""case-search 플러그인(빅케이스 판례 검색)이 설치·로그인돼 있으면 연결한다 — 없으면 조용히 빠진다.
+"""빅케이스 판례 검색(case-search 스킬)이 쓸 수 있고 로그인돼 있으면 연결한다 — 없으면 조용히 빠진다.
 
-case-search 는 Python 3.10+ 와 외부 패키지가 필요해 import 하지 않고 `uv run <installPath>/scripts/bigcase.py` 로 부른다.
+lawfirm 0.4.0 부터 case-search 는 같은 플러그인의 `skills/case-search/` 에 있다. 그 파일을 먼저 쓰고,
+없으면 옛 case-search 플러그인 설치본을 찾는다(이전 기간용).
+bigcase.py 는 Python 3.10+ 와 외부 패키지가 필요해 import 하지 않고 `uv run <bigcase.py>` 로 부른다.
 변호사 본인의 빅케이스 계정(OS 키체인)을 쓴다 — 토큰이 만료돼 있으면 case-search 가 키체인 비밀번호로 다시 로그인한다.
 이용 범위(case-search 안내): 본인 계정으로, 사람이 화면에서 찾는 정도의 빈도로만. 대량 수집·페이지 끝까지 넘기기 금지.
 그래서 인용 대조는 법제처에 원문이 없는 판례 한 건당 한 번만 부른다. 토큰·비밀번호는 출력하지 않는다.
@@ -21,7 +23,9 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _paths as P  # noqa: E402
 
-PLUGIN_KEY = "case-search@case-search"
+BUNDLED = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..",
+                                        "case-search", "scripts", "bigcase.py"))
+LEGACY_KEYS = ("case-search@case-search",)
 STATUS_TIMEOUT = 180  # 첫 실행은 uv 가 의존성을 받느라 오래 걸린다
 CALL_TIMEOUT = 90
 
@@ -42,15 +46,17 @@ def _config_dirs():
 
 
 def find_script():
+    if os.path.isfile(BUNDLED):
+        return BUNDLED
     for d in _config_dirs():
         p = os.path.join(d, "plugins", "installed_plugins.json")
         if not os.path.exists(p):
             continue
         try:
-            entries = (P.load_json(p).get("plugins") or {}).get(PLUGIN_KEY) or []
+            plugins = P.load_json(p).get("plugins") or {}
         except (ValueError, OSError):
             continue
-        for e in entries:
+        for e in [e for k in LEGACY_KEYS for e in (plugins.get(k) or [])]:
             script = os.path.join(e.get("installPath") or "", "scripts", "bigcase.py")
             if os.path.isfile(script):
                 return script
@@ -100,7 +106,7 @@ def detect():
         return {"available": False, "reason": "INTENT_BRIEF_NO_CASESEARCH 로 꺼 둠"}
     script = find_script()
     if not script:
-        return {"available": False, "reason": "case-search 플러그인이 설치돼 있지 않음"}
+        return {"available": False, "reason": "case-search(bigcase.py)가 설치돼 있지 않음"}
     uv = find_uv()
     if not uv:
         return {"available": False, "reason": "case-search 실행에 필요한 uv 가 없음"}
@@ -110,7 +116,7 @@ def detect():
         return {"available": False, "reason": str(e)}
     logged = bool(st.get("email")) and bool(st.get("password_saved"))
     if not logged:
-        return {"available": False, "logged_in": False, "reason": "빅케이스 로그인 정보 없음(case-search 의 setup 필요)"}
+        return {"available": False, "logged_in": False, "reason": "빅케이스 로그인 정보 없음(/lawfirm:case-search-setup 필요)"}
     return {"available": True, "logged_in": True, "script": script}
 
 

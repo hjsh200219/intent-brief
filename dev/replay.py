@@ -108,7 +108,7 @@ def interview(run_dir, case_dir, answers, brief):
     raise ReplayError("인터뷰가 40회 안에 끝나지 않았습니다")
 
 
-DRAFT_PROMPT = """intent-brief 플러그인의 intent-brief 스킬로 민사 {brief} 초안을 쓴다. 인터뷰와 설계 확인은 이미 끝났다 — 질문하지 말고, 사용자 확인을 기다리지 말고, SKILL.md 의 「5. 초안 작성」「6. 검사 → 1회 고쳐 쓰기」「7. 인용 대조」만 수행한다.
+DRAFT_PROMPT = """lawfirm 플러그인의 intent-brief 스킬로 민사 {brief} 초안을 쓴다. 인터뷰와 설계 확인은 이미 끝났다 — 질문하지 말고, 사용자 확인을 기다리지 말고, SKILL.md 의 「5. 초안 작성」「6. 검사 → 1회 고쳐 쓰기」「7. 인용 대조」만 수행한다.
 
 - design.json: {design}
 - 원자료(사건 폴더, 읽기만): {case}

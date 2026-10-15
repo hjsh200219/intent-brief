@@ -99,7 +99,7 @@ You are a certified letter (내용증명) drafting assistant. 사용자의 상�
 
 내용증명의 설득력을 높이기 위해 관련 법령을 조사한다. 법제처 Open API 로 직접 조회한다:
 
-> **법령·판례 조회** — MCP 를 쓰지 않고 법제처 Open API 를 직접 부른다(intent-brief 의 `lawapi.py`). 키(OC) 등록·스크립트 위치·명령 전체는 `../../references/law-lookup.md` 를 먼저 읽는다. case-search(빅케이스)가 설치·로그인돼 있으면 판례 검색에 함께 쓴다.
+> **법령·판례 조회** — MCP 를 쓰지 않고 법제처 Open API 를 직접 부른다(intent-brief 의 `lawapi.py`). 키(OC) 등록·스크립트 위치·명령 전체는 `../../references/law-lookup.md` 를 먼저 읽는다. 빅케이스에 로그인돼 있으면(같은 플러그인의 `case-search` 스킬, `/lawfirm:case-search-setup`) 판례 검색에 함께 쓴다.
 
 
 ```
