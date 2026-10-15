@@ -29,7 +29,7 @@ def skill_texts():
 
 
 def test_all_present_with_frontmatter():
-    assert sorted(n for n in os.listdir(SKILLS) if os.path.isdir(os.path.join(SKILLS, n))) == sorted(EMBEDDED + ["intent-brief", "case-search", "litigation-calc", "brainstorming-lawfirm"])
+    assert sorted(n for n in os.listdir(SKILLS) if os.path.isdir(os.path.join(SKILLS, n))) == sorted(EMBEDDED + ["intent-brief", "case-search", "litigation-calc", "brainstorming-lawfirm", "review-contract", "triage-nda"])
     for name in EMBEDDED:
         head = read(os.path.join(SKILLS, name, "SKILL.md")).split("---")[1]
         assert re.search(r"(?m)^name:\s*%s\s*$" % re.escape(name), head)

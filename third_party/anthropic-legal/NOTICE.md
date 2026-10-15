@@ -5,5 +5,7 @@
 | 원본 스킬 | 이 플러그인에서 | 바꾼 것 |
 |---|---|---|
 | `legal-risk-assessment` | `skills/brainstorming-lawfirm/scripts/risk.py`·SKILL.md 4절 | 심각도×가능성 5×5 행렬과 점수 구간(1–4·5–9·10–15·16–25)만 가져와 한국 소송 실무 문구로 옮겼다. 사내 법무팀용 에스컬레이션·외부 변호사 선임 기준은 뺐다. |
+| `review-contract` | `skills/review-contract/` | 플레이북 대조·GREEN/YELLOW/RED·수정 문안 형식·협상 우선순위 3단계 구조를 가져와 한국 강행규정(약관법·민법·상법·개인정보 보호법·하도급법·근로기준법·민사소송법·중재법·국제사법) 점검으로 다시 썼다. 플레이북은 `legal.local.md` 대신 작업 폴더 `playbooks/` 파일. CLM 연동은 뺐다. |
+| `triage-nda` | `skills/triage-nda/`, `skills/review-contract/references/playbook-nda.md` | 10개 점검 항목·3단계 분류 기준을 가져와 영업비밀 정의(부정경쟁방지법)·손해배상액 예정(민법 제398조)·근로자 위약 예정 금지(근로기준법 제20조)·관할 합의(민사소송법 제29조) 기준을 더했다. |
 
 원본 문구를 그대로 옮긴 곳은 없고, 구조를 참고해 한국어로 새로 썼다.
