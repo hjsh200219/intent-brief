@@ -144,3 +144,16 @@ def test_discover_keeps_query_names_only():
     import discover as DV
     assert DV.query_names("q=%ED%99%8D&token=abc123&page=2") == ["page", "q", "token"]
     assert DV.query_names("") == []
+
+
+def test_robots_honors_claude_user_rules():
+    """사람 요청으로 Claude 가 부르는 도구다 — `*` 규칙과 함께 `Claude-User` 규칙도 지킨다(casenote.kr 2026-10-15 형태)."""
+    sys.path.insert(0, os.path.join(SKILL, "scripts"))
+    import discover as DV
+    text = "User-agent: *\nDisallow: /search/\nDisallow: /login/\n\nUser-agent: Claude-User\nDisallow: /\n"
+    ok, blocked = DV.robots_decision(text, "https://casenote.kr/")
+    assert ok is False and blocked == ["Claude-User"]
+    only_star = "User-agent: *\nDisallow: /search/\n"
+    assert DV.robots_decision(only_star, "https://x.kr/")[0] is True
+    assert DV.robots_decision(only_star, "https://x.kr/search/?q=a") == (False, ["Claude-User", "*"])
+    assert DV.robots_decision("", "https://x.kr/search/")[0] is True

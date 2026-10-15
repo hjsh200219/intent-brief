@@ -5,7 +5,7 @@
 # ///
 """URL 하나에서 API 후보를 찾는다 — 실행: uv run discover.py <URL> [--out 폴더] [--cdp http://localhost:9222 --scroll 3]
 
-1) robots.txt 가 막으면 멈춘다. 2) 페이지와 같은 호스트의 스크립트(최대 MAX_SCRIPTS개, 요청 간격 1초)를 받아
+1) robots.txt 가 일반(*) 또는 AI 에이전트(Claude-User) 접근을 막으면 멈춘다. 2) 페이지와 같은 호스트의 스크립트(최대 MAX_SCRIPTS개, 요청 간격 1초)를 받아
 extract.py 로 정적 분석한다. 3) --cdp 를 주면 이미 떠 있는 Chrome(원격 디버깅 포트)에 붙어 실제 XHR·fetch 요청을 잡는다
 (로그인·검색을 사람이 그 창에서 해 두면 정확해진다). 응답 본문은 저장하지 않고 JSON 키 구조만 남긴다(개인정보 보호).
 Authorization·Cookie 헤더 값과 쿼리 인자 값은 기록하지 않는다(이름만).
@@ -18,6 +18,8 @@ import logging
 import os
 import sys
 import time
+import urllib.error
+import urllib.request
 import urllib.robotparser
 from urllib.parse import parse_qsl, urlparse
 
@@ -30,15 +32,31 @@ UA = "Mozilla/5.0"
 SECRET_HEADERS = {"authorization", "cookie", "x-csrf-token", "x-xsrf-token", "x-api-key"}
 
 
-def robots_allows(url: str) -> tuple[bool, str]:
+AGENTS = ("Claude-User", "*")  # 사람 요청으로 Claude 가 부르는 도구 — AI 에이전트용 규칙과 일반 규칙을 모두 지킨다
+
+
+def robots_decision(text: str, url: str) -> tuple[bool, list[str]]:
+    rp = urllib.robotparser.RobotFileParser()
+    rp.parse(text.splitlines())
+    blocked = [a for a in AGENTS if not rp.can_fetch(UA if a == "*" else a, url)]
+    return not blocked, blocked
+
+
+def robots_allows(url: str) -> tuple[bool, str, list[str]]:
     u = urlparse(url)
     robots = f"{u.scheme}://{u.netloc}/robots.txt"
-    rp = urllib.robotparser.RobotFileParser(robots)
+    req = urllib.request.Request(robots, headers={"User-Agent": UA})
     try:
-        rp.read()
+        with urllib.request.urlopen(req, timeout=15) as r:
+            text = r.read(512 * 1024).decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            return False, f"{robots} 접근 거부(HTTP {e.code}) — 자동 접근을 막는 사이트로 본다", ["*"]
+        return True, f"{robots} 없음(HTTP {e.code})", []
     except Exception as e:  # noqa: BLE001 — robots.txt 를 못 읽으면 막지 않되 기록한다
-        return True, f"robots.txt 읽기 실패({type(e).__name__}) — 이용약관을 직접 확인하세요"
-    return rp.can_fetch(UA, url), robots
+        return True, f"robots.txt 읽기 실패({type(e).__name__}) — 이용약관을 직접 확인하세요", []
+    ok, blocked = robots_decision(text, url)
+    return ok, robots, blocked
 
 
 def query_names(query: str) -> list[str]:
@@ -129,14 +147,18 @@ def main() -> int:
     if urlparse(a.url).scheme not in ("http", "https"):
         print(json.dumps({"ok": False, "error": "http(s) 주소가 필요합니다"}, ensure_ascii=False))
         return 3
-    allowed, robots = robots_allows(a.url)
+    allowed, robots, blocked = robots_allows(a.url)
     if not allowed:
-        print(json.dumps({"ok": False, "error": "robots_disallow", "robots": robots,
-                          "message": "robots.txt 가 이 주소의 자동 수집을 막습니다. 멈춥니다."}, ensure_ascii=False))
+        print(json.dumps({"ok": False, "error": "robots_disallow", "robots": robots, "blocked_for": blocked,
+                          "message": "robots.txt 가 이 주소의 자동 접근을 막습니다(%s). 멈춥니다." % ", ".join(blocked)},
+                         ensure_ascii=False))
         return 4
     result = {"ok": True, "url": a.url, "robots": robots, "static": static_scan(a.url)}
     if a.cdp:
-        result["network"] = cdp_capture(a.url, a.cdp, a.scroll)
+        try:
+            result["network"] = cdp_capture(a.url, a.cdp, a.scroll)
+        except Exception as e:  # noqa: BLE001 — 연결 실패·networkidle 시간 초과도 JSON 으로 알린다
+            result["network"], result["network_error"] = [], f"{type(e).__name__}: {str(e)[:200]}"
     os.makedirs(a.out, exist_ok=True)
     path = os.path.join(a.out, "endpoints.json")
     with open(path, "w", encoding="utf-8") as f:

@@ -10,7 +10,7 @@ allowed-tools: Bash(uv run:*), Bash(python3:*), Bash(python:*), Bash(py:*)
 
 ## 0. 이용 범위 — 먼저 확인
 
-- 그 사이트의 이용약관이 자동화된 조회를 금지하는지 변호사에게 확인을 받는다(금지하면 만들지 않는다). `discover.py` 는 robots.txt 가 막으면 멈춘다 — 우회하지 않는다.
+- 그 사이트의 이용약관이 자동화된 조회를 금지하는지 변호사에게 확인을 받는다(금지하면 만들지 않는다). `discover.py` 는 robots.txt 가 일반(`*`) 또는 AI 에이전트(`Claude-User`) 접근을 막으면 멈춘다 — 우회하지 않는다. 막힌 사이트는 만들지 않고 변호사에게 그 사실과 대안(공식 API·제휴 문의·빅케이스·법제처)을 알린다.
 - 본인(사무소) 계정으로, 사람이 화면에서 찾는 정도의 빈도로만 쓴다. 만든 클라이언트는 요청 사이에 1초 이상 쉰다. 대량 수집·재배포·다른 사람 계정 사용에는 쓰지 않는다.
 - 아이디·비밀번호는 채팅으로 받지 않는다. 만든 클라이언트의 `setup` 이 입력 창(터미널이면 숨김 입력, macOS·Windows는 OS 창 — `--prompt` 방식과 같다)으로 받아 키체인에 저장한다.
 - uv 가 없으면 설치를 안내한다(macOS `curl -LsSf https://astral.sh/uv/install.sh | sh`, Windows `winget install astral-sh.uv`). `--cdp` 발굴이나 동적 페이지에는 브라우저 엔진이 필요하다: `uv tool run --from "scrapling[fetchers]" scrapling install` 를 한 번 실행한다.
