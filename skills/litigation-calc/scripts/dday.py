@@ -7,7 +7,8 @@
 항소·상고·항고·이의·추후보완·재심·제소·시효·제척·불변 이 들어간 줄은 불변기간·시효로 강조한다.
 
   scan [--days N]            JSON
-  hook                       세션 시작 훅용 — 다가오는 것이 없으면 아무것도 출력하지 않는다(상한에 걸리면 경고 1줄). 어떤 오류에도 exit 0
+  hook                       세션 시작 훅용(Claude Code·Codex 공통 JSON — hookSpecificOutput.additionalContext). 다가오는 것이 없으면
+                             아무것도 출력하지 않는다(상한에 걸리면 경고 1줄). 어떤 오류에도 exit 0
   roots add|remove <폴더> · roots list
 """
 import argparse
@@ -197,7 +198,10 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if a.cmd == "hook":
         try:
-            sys.stdout.write(hook_text(scan(hook=True)))
+            text = hook_text(scan(hook=True))
+            if text:  # Claude Code·Codex 가 다 받는 형식 — Codex 는 일반 텍스트 출력을 실패로 버린다.
+                # ASCII(\\uXXXX)로 낸다: Windows Codex 는 훅을 PowerShell 5.1 로 돌려 한글 출력이 콘솔 코드 페이지로 다시 인코딩될 수 있다
+                sys.stdout.write(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": text}}) + "\n")
         except Exception:  # noqa: BLE001 — 훅은 세션 시작을 막지 않는다
             pass
         return 0

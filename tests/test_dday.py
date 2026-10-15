@@ -72,7 +72,11 @@ def test_hook_lines(home, tmp_path, capsys):
     _case(root, "260901_손해배상(가명갑)")
     DD.roots_add(str(root))
     assert DD.main(["hook"]) == 0
-    lines = capsys.readouterr().out.strip().splitlines()
+    raw = capsys.readouterr().out
+    assert raw.isascii()  # PowerShell 5.1 이 한글을 콘솔 코드 페이지로 바꿔도 깨지지 않게
+    out = json.loads(raw)  # Claude·Codex 가 다 받는 형식 — Codex 는 일반 텍스트를 실패로 본다
+    assert out["hookSpecificOutput"]["hookEventName"] == "SessionStart"
+    lines = out["hookSpecificOutput"]["additionalContext"].strip().splitlines()
     assert lines[0].startswith("[lawfirm]") and "3건" in lines[0]
     assert lines[1].startswith("- D-3 2026-09-18(금) 260901_손해배상(가명갑): 항소 기한") and "불변기간·시효" in lines[1]
     assert len(lines) == 4
@@ -109,6 +113,9 @@ def test_plugin_hooks_json():
     assert len(entries) == 1 and entries[0]["matcher"] == "startup|resume"
     hook = entries[0]["hooks"][0]
     assert hook["type"] == "command" and hook["timeout"] <= 15
+    win = hook["commandWindows"]  # Windows Codex 는 이 칸을 PowerShell 5.1 로 실행한다(vm-develop codex-cli 0.160.0 실측)
+    assert "${CLAUDE_PLUGIN_ROOT}/skills/litigation-calc/scripts/dday.py" in win and "py -3" in win and "exit 0" in win
+    assert "||" not in win and "/dev/null" not in win  # PowerShell 5.1 에 없는 문법
     cmd = hook["command"]
     assert "${CLAUDE_PLUGIN_ROOT}/skills/litigation-calc/scripts/dday.py" in cmd and cmd.rstrip().endswith("|| true")
     assert "python3" in cmd and "py -3" in cmd
@@ -177,5 +184,5 @@ def test_hook_warns_when_scan_incomplete(home, tmp_path, monkeypatch, capsys):
     full = DD.scan(days=14)
     assert full["incomplete"] is False and len({i["case"] for i in full["items"]}) == 3
     assert DD.main(["hook"]) == 0
-    out = capsys.readouterr().out
+    out = json.loads(capsys.readouterr().out)["hookSpecificOutput"]["additionalContext"]
     assert "다 보지 못했습니다" in out and "dday.py" in out

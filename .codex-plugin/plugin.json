@@ -1,0 +1,52 @@
+{
+  "name": "lawfirm",
+  "version": "0.7.0",
+  "description": "한국 변호사용 법률 업무 플러그인 — 의도 기반 민사 서면, 법률 문서 스킬 6종, 판례·법령 검색(법제처·빅케이스·미국·독일), 사건 전략, 계약서·NDA 검토, 법정기간·소송비용 계산과 기한 알림, 독립 검토, 사이트 API 클라이언트 생성.",
+  "author": {
+    "name": "hoshin",
+    "url": "https://github.com/hjsh200219"
+  },
+  "homepage": "https://github.com/hjsh200219/lawfirm",
+  "repository": "https://github.com/hjsh200219/lawfirm",
+  "license": "MIT",
+  "keywords": [
+    "korean-law",
+    "legal",
+    "litigation",
+    "brief",
+    "준비서면",
+    "답변서",
+    "민사소송",
+    "변호사",
+    "내용증명",
+    "고소장",
+    "형사합의서",
+    "사실확인서",
+    "형사절차",
+    "양형예측",
+    "판례",
+    "법제처",
+    "빅케이스",
+    "case-search"
+  ],
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json",
+  "interface": {
+    "displayName": "Lawfirm (한국 법률 업무)",
+    "shortDescription": "한국 변호사용 서면·판례 검색·계약 검토·기한 계산",
+    "longDescription": "의도 기반 민사 준비서면·답변서 초안과 의도대응표, 내용증명·고소장·형사합의서·사실확인서·형사절차 시뮬레이터·양형 예측, 법제처 원문 판례·법령 검색(빅케이스·미국·독일 보조), 사건 전략 메모(IRAC·레드팀), 한국법 계약서·NDA 검토, 법정기간 만료일·인지액·송달료·지연손해금 계산과 세션 시작 기한 알림, 제출 전 독립 검토, URL 로 사이트 API 클라이언트 만들기. 키·자격증명은 입력 창으로만 받는다. AI는 실수할 수 있으며 최종 검토와 제출 판단은 사용 변호사의 책임입니다.",
+    "developerName": "hoshin",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/hjsh200219/lawfirm",
+    "defaultPrompt": [
+      "이 사건 폴더로 준비서면 초안을 써 줘",
+      "판결서 송달일 기준 항소기간 만료일을 계산해 줘",
+      "이 계약서를 우리 사무소 기준으로 검토해 줘"
+    ]
+  }
+}

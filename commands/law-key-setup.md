@@ -6,6 +6,8 @@ allowed-tools: Bash(python3:*), Bash(python:*), Bash(py:*)
 
 # 법제처·해외 판례 키 등록
 
+> Codex 에서는 셸에 `${CLAUDE_PLUGIN_ROOT}` 가 없다 — 이 문서를 연 경로에서 `.codex-plugin` 폴더가 있는 상위 폴더(플러그인 루트)를 찾아 그 절대경로로 바꿔 쓴다. Claude Code 에서는 그대로 둔다.
+
 키는 사용자가 **입력 창**(터미널에서 실행하면 프롬프트)에 직접 넣는다. 채팅으로 달라고 하지 않는다. `$PY` 는 Python 3.9 이상(`python3` → `python` → `py -3`).
 
 ## 1. 법제처 OC 키

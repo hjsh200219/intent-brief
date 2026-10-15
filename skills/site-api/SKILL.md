@@ -6,6 +6,8 @@ allowed-tools: Bash(uv run:*), Bash(python3:*), Bash(python:*), Bash(py:*)
 
 # site-api — URL → API 클라이언트
 
+> Codex 에서는 셸에 `${CLAUDE_PLUGIN_ROOT}` 가 없다 — 이 문서를 연 경로에서 `.codex-plugin` 폴더가 있는 상위 폴더(플러그인 루트)를 찾아 그 절대경로로 바꿔 쓴다. Claude Code 에서는 그대로 둔다.
+
 `$A` = `${CLAUDE_PLUGIN_ROOT}/skills/site-api/scripts`. 발굴(`discover.py`)과 만든 클라이언트는 uv 로 실행하며 Scrapling 을 uv 가 붙인다. 추출·생성(`extract.py`·`scaffold.py`)은 표준 라이브러리만 쓴다.
 
 ## 0. 이용 범위 — 먼저 확인

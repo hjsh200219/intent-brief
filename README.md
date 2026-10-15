@@ -1,4 +1,4 @@
-# lawfirm — 한국 변호사용 법률 업무 플러그인 (Claude Code)
+# lawfirm — 한국 변호사용 법률 업무 플러그인 (Claude Code·Codex)
 
 민사 서면 초안, 법률 문서 초안, 판례·법령 검색, 사건 전략·계약 검토, 법정기간·소송비용 계산을 한 플러그인에서 합니다.
 
@@ -22,7 +22,7 @@
 
 ## 설치
 
-필요: Claude Code, **Python 3.9 이상**(외부 패키지 없음).
+필요: Claude Code 또는 Codex, **Python 3.9 이상**(외부 패키지 없음).
 
 ```
 /plugin marketplace add hjsh200219/lawfirm
@@ -30,6 +30,20 @@
 ```
 
 Claude Code 2.1.275 이상이면 한 줄로도 됩니다: `/plugin install lawfirm --marketplace hjsh200219/lawfirm`. repo 폴더를 받아 두었다면 `claude plugin marketplace add <폴더 경로>` → `claude plugin install lawfirm@lawfirm`.
+
+### Codex
+
+codex-cli 0.162.1(macOS)·0.160.0(Windows)에서 확인했습니다. 터미널에서:
+
+```
+codex plugin marketplace add hjsh200219/lawfirm
+codex plugin add lawfirm@lawfirm
+```
+
+- 같은 스킬 14개를 씁니다. 명령 두 개는 Codex 에서 스킬로 바뀝니다(`source-command-law-key-setup`·`source-command-case-search-setup`) — `/lawfirm:law-key-setup` 대신 「법제처 키 등록해 줘」, 「빅케이스 계정 등록해 줘」처럼 말하면 됩니다.
+- 세션 시작 기한 알림은 훅이라 Codex 가 처음 실행할 때 「Hooks need review」 창을 띄웁니다. 「Trust all and continue」를 고르면 켜집니다(고르지 않으면 알림만 꺼지고 나머지는 그대로).
+- 작업 폴더(`~/.intent-brief`)·법제처 키·빅케이스 키체인을 Claude Code 와 같이 씁니다. 두 도구를 오가도 사건·키가 이어집니다.
+- 업데이트: `codex plugin marketplace upgrade lawfirm` → `codex plugin add lawfirm@lawfirm`.
 
 쓰는 기능에 따라 더 필요한 것:
 
@@ -87,7 +101,7 @@ Claude Code 2.1.275 이상이면 한 줄로도 됩니다: `/plugin install lawfi
 
 법률 문서 스킬 6종은 thechain.lawyer(이영남 변호사 사무소)의 스킬입니다(MIT). 법령·판례 조회는 이 플러그인의 법제처 직접 호출을 쓰고(`references/law-lookup.md`), 산출물 끝의 변호사 안내(CTA)는 `references/cta-config.md` 를 따릅니다. 계약 검토·NDA 분류·위험 점수표는 Anthropic knowledge-work-plugins 의 legal 스킬(Apache-2.0) 구조를 한국법으로 다시 썼습니다 — [고지](third_party/anthropic-legal/NOTICE.md).
 
-## 지원 범위 (0.6.0)
+## 지원 범위 (0.7.0)
 
 - `intent-brief` 서면: 민사 준비서면(원고·피고), 답변서(피고). 소장·항소이유서·가사·행정은 범위 밖(형사 문서는 위 법률 문서 스킬).
 - `case-search`: 법제처·빅케이스·미국·독일. LBOX 는 준비 중(정찰 자료 `docs/case-search/lbox/`).
@@ -124,6 +138,7 @@ uv run --no-project --with "scrapling[fetchers]>=0.4.11" --with keyring --with p
 
 ## 변경 이력
 
+- **0.7.0 (2026-10-16)** — Codex 에서도 설치됩니다(`.codex-plugin/plugin.json`·`.agents/plugins/marketplace.json`, 위 「Codex」). 세션 시작 기한 알림이 두 도구가 다 받는 JSON 으로 나옵니다. Codex 검토 지적 11건을 고쳤습니다: 서식 내려받기가 오류 페이지를 저장하던 문제, 이율 바뀌는 날 이자를 두 번 세던 문제, 콘텐츠 컨트롤 안 docx 문단을 못 읽던 문제, 「~~옛 날짜~~ 새 날짜」 정정 기한을 놓치던 문제, 사건이 많으면 기한 점검이 말없이 일부를 건너뛰던 문제(이제 경고), 의뢰인별 계약 검토 기준(`--profile`), 생성한 사이트 클라이언트가 다른 사이트 세션을 쓰거나 응답 속 토큰을 출력하던 문제 등.
 - **0.6.0 (2026-10-15)** — 새 스킬 6개: `brainstorming-lawfirm`(IRAC·레드팀·위험 점수표), `litigation-calc`(법정기간 만료일·인지액·송달료·지연손해금, 기한 D-day 점검과 세션 시작 알림), `review-contract`·`triage-nda`(한국법 계약서 검토·NDA 분류), `independent-review`(지적만 하는 독립 검토), `site-api`(URL → Scrapling 클라이언트). 법률 문서 스킬 6종에 구성안 승인 단계를 넣었습니다. case-search 에 법제처 별표·서식 조회와 서식 파일 내려받기를 넣었고, 조문의 호·목이 빠지던 문제, 「상법」처럼 검색 결과 뒤쪽에 있는 법령을 못 찾던 문제, 조 번호 없는 한 문장 법령(예: 소송촉진법 법정이율 규정)을 읽지 못하던 문제를 고쳤습니다.
 - **0.5.0 (2026-10-15)** — case-search 에 법제처 조회(법령·조문·판례·헌재결정·법령해석례·행정규칙·용어)와 해외 판례(미국 CourtListener·독일 OpenLegalData)를 넣었습니다. 빅케이스 계정이 없으면 법제처·해외 판례만 씁니다. 법제처 키·CourtListener 토큰을 `/lawfirm:law-key-setup` 입력 창으로 받아 저장합니다(명령행 인자로 받던 경로는 없앴습니다).
 - **0.4.0 (2026-10-15)** — 이름을 lawfirm 으로 정하고 판례 검색(case-search)을 넣었습니다. 빅케이스 인증 정보를 bigcase.ai 밖으로 보내지 않게 막았고, 한국어 Windows 콘솔(cp949)에서 판례 조회 결과가 깨지던 문제를 고쳤습니다.

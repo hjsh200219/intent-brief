@@ -6,6 +6,8 @@ allowed-tools: Read, Bash(python3:*), Bash(python:*), Bash(py:*)
 
 # independent-review — 독립 검토자
 
+> Codex 에서는 셸에 `${CLAUDE_PLUGIN_ROOT}` 가 없다 — 이 문서를 연 경로에서 `.codex-plugin` 폴더가 있는 상위 폴더(플러그인 루트)를 찾아 그 절대경로로 바꿔 쓴다. Claude Code 에서는 그대로 둔다.
+
 작성자가 아닌 검토자로서 문서를 읽고 **지적만** 한다. 문서를 고치지 않고, 고친 문안을 쓰지 않는다(수정은 작성 스킬이나 변호사가 한다). 작성한 대화의 맥락에 끌리지 않도록, 가능하면 작성에 쓰지 않은 새 대화나 별도 에이전트에서 문서와 자료만 주고 돌린다.
 
 `$V` = `${CLAUDE_PLUGIN_ROOT}/skills/independent-review/scripts`

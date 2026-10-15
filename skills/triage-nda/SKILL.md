@@ -6,6 +6,8 @@ allowed-tools: Bash(python3:*), Bash(python:*), Bash(py:*)
 
 # triage-nda — 비밀유지계약 사전 분류
 
+> Codex 에서는 셸에 `${CLAUDE_PLUGIN_ROOT}` 가 없다 — 이 문서를 연 경로에서 `.codex-plugin` 폴더가 있는 상위 폴더(플러그인 루트)를 찾아 그 절대경로로 바꿔 쓴다. Claude Code 에서는 그대로 둔다.
+
 `$R` = `${CLAUDE_PLUGIN_ROOT}/skills/review-contract/scripts` (플레이북 관리 스크립트는 review-contract 와 같이 쓴다) · 법령 `LAW` = `python3 ${CLAUDE_PLUGIN_ROOT}/skills/intent-brief/scripts/lawapi.py`
 
 ## 1. 받기·기준

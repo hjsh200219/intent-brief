@@ -1,4 +1,4 @@
-"""개발 전용 문서 검사 — 상대 링크·백틱 경로·파일명 실존, docs/ 고아 문서, 두 매니페스트 버전 일치, AGENTS.md 줄 수.
+"""개발 전용 문서 검사 — 상대 링크·백틱 경로·파일명 실존, docs/ 고아 문서, 매니페스트(Claude 둘·Codex) 버전 일치, AGENTS.md 줄 수.
 
 사용: python3 dev/verify_docs.py      (문제 있으면 종료 코드 1)
 """
@@ -66,6 +66,10 @@ def check():
     mv = [x.get("version") for x in market.get("plugins", []) if x.get("name") == plugin["name"]]
     if mv != [plugin["version"]]:
         errors.append("버전 불일치: plugin.json %s / marketplace.json %s" % (plugin["version"], mv))
+    codex = json.load(open(os.path.join(ROOT, ".codex-plugin", "plugin.json"), encoding="utf-8"))
+    if (codex.get("name"), codex.get("version")) != (plugin["name"], plugin["version"]):
+        errors.append("Codex 매니페스트 불일치: .codex-plugin/plugin.json %s %s / .claude-plugin %s %s"
+                      % (codex.get("name"), codex.get("version"), plugin["name"], plugin["version"]))
     n = sum(1 for _ in open(os.path.join(ROOT, "AGENTS.md"), encoding="utf-8"))
     if n > ENTRY_MAX:
         errors.append("AGENTS.md %d줄 — 상한 %d줄(지도만 두고 상세는 docs/ 로)" % (n, ENTRY_MAX))

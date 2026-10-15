@@ -7,6 +7,8 @@ allowed-tools: Bash(uv run:*), Bash(python3:*), Bash(python:*), Bash(py:*)
 
 # case-search — 판례·법령 검색
 
+> Codex 에서는 셸에 `${CLAUDE_PLUGIN_ROOT}` 가 없다 — 이 문서를 연 경로에서 `.codex-plugin` 폴더가 있는 상위 폴더(플러그인 루트)를 찾아 그 절대경로로 바꿔 쓴다. Claude Code 에서는 그대로 둔다.
+
 원천 셋을 쓴다. 명령은 모두 JSON(또는 Markdown)을 출력하고, `ok: false` 면 `error` 를 그대로 알린다(추측으로 채우지 않는다).
 
 | 줄임 | 원천 | 명령 | 계정·키 |

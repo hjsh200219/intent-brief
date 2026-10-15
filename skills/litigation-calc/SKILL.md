@@ -6,6 +6,8 @@ allowed-tools: Bash(python3:*), Bash(python:*), Bash(py:*)
 
 # litigation-calc — 법정기간·소송비용 계산
 
+> Codex 에서는 셸에 `${CLAUDE_PLUGIN_ROOT}` 가 없다 — 이 문서를 연 경로에서 `.codex-plugin` 폴더가 있는 상위 폴더(플러그인 루트)를 찾아 그 절대경로로 바꿔 쓴다. Claude Code 에서는 그대로 둔다.
+
 날짜·금액은 모델이 셈하지 않고 스크립트로 계산한다. 스크립트는 표준 라이브러리만 쓴다(Python 3.9 이상).
 `$C` = `${CLAUDE_PLUGIN_ROOT}/skills/litigation-calc/scripts`. Python 은 `python3` → `python` → `py -3` 순서로 찾는다.
 

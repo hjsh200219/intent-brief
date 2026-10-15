@@ -11,6 +11,12 @@
 - Python 3.9(`skills/intent-brief/scripts/`·`foreigncase.py`·0.6.0 스킬 스크립트(L3d) — `bigcase.py`·site-api `discover.py`·생성 클라이언트는 uv 로 3.10+·Scrapling 을 쓴다): `match`·`X | Y` 타입 같은 문법뿐 아니라 `sys.stdlib_module_names`(3.10+) 같은 API 도 없다. 테스트도 3.9 로 한 번 돌린다(Health Stack).
 - Windows: 한글 경로·CRLF 사건메모·`%LOCALAPPDATA%`. 콘솔 코드 페이지가 UTF-8 이 아닐 수 있어 표준출력은 `_paths.emit` 가 UTF-8 바이트로 직접 쓴다 — 스크립트에서 `print` 로 결과를 내지 않는다. 예외는 `bigcase.py`(L3b)와 `_paths` 를 쓰지 않는 독립 스크립트(`foreigncase.py`, 0.6.0 L3d·L3e) — `main()` 이 stdout·stderr 를 UTF-8 로 `reconfigure` 한 뒤 `print` 를 쓰고, `casesearch.py` 는 하위 프로세스에 `PYTHONIOENCODING=utf-8` 을 넘긴다(cp949 콘솔에서 사건번호가 깨지던 것, 2026-10-15).
 
+## Codex(같은 repo 를 Codex 플러그인으로도 설치 — 2026-10-16 실측: macOS codex-cli 0.162.1, Windows vm-develop 0.160.0)
+- 셸 도구에는 `CLAUDE_PLUGIN_ROOT` 가 없다(훅에만 준다). `${CLAUDE_PLUGIN_ROOT}` 를 쓰는 문서에는 「Codex 에서는 셸에 …」 안내 줄을 둔다(`tests/test_codex_plugin.py` 가 검사).
+- 명령(`commands/`)은 `source-command-<이름>` 스킬로 바뀌는데 `$ARGUMENTS` 를 쓰면 말없이 빠진다.
+- SessionStart 훅이 일반 텍스트를 내면 「Failed」로 버린다 — `hookSpecificOutput.additionalContext` JSON 으로 낸다(Claude Code 도 받는다). Windows Codex 는 `commandWindows` 를 PowerShell 5.1 로 돌리고 `${CLAUDE_PLUGIN_ROOT}` 를 미리 경로로 바꿔 넣는다 — 한글은 JSON `\uXXXX`(ASCII)로 낸다.
+- 플러그인 훅은 사용자가 신뢰를 승인해야 돈다(TUI 「Hooks need review」). 무인 시험은 격리 `CODEX_HOME` + `codex exec --dangerously-bypass-hook-trust` 로 한다.
+
 ## 원격(법제처 Open API, `lawapi.py`)
 - 판례 정확 일치는 사건번호 파라미터 `nb` 로 찾는다(2026-10-15 실측: 2016다225353·2018다248626 모두 1건). `query` 는 사건명 검색이라 번호로는 안 걸리고, 본문 검색은 `search=2`.
 - 결과가 1건이면 목록이 배열이 아니라 객체로 온다 — `lawapi._list` 로 감싼다.

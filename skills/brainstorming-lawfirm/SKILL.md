@@ -6,6 +6,8 @@ allowed-tools: Bash(python3:*), Bash(python:*), Bash(py:*), Bash(uv run:*)
 
 # brainstorming-lawfirm — IRAC + 레드팀 사건 전략 메모
 
+> Codex 에서는 셸에 `${CLAUDE_PLUGIN_ROOT}` 가 없다 — 이 문서를 연 경로에서 `.codex-plugin` 폴더가 있는 상위 폴더(플러그인 루트)를 찾아 그 절대경로로 바꿔 쓴다. Claude Code 에서는 그대로 둔다.
+
 변호사의 사건 검토를 돕는 **내부 메모**를 만든다. 의뢰인·법원 제출용이 아니다. 비변호사의 유상 법률사무는 변호사법 제109조가 금지하므로 이 메모는 변호사의 검토 자료로만 쓰고, 결론은 변호사가 정한다.
 
 `$B` = `${CLAUDE_PLUGIN_ROOT}/skills/brainstorming-lawfirm/scripts` · 계산기 `$C` = `${CLAUDE_PLUGIN_ROOT}/skills/litigation-calc/scripts` · 법령 `LAW` = `python3 ${CLAUDE_PLUGIN_ROOT}/skills/intent-brief/scripts/lawapi.py`
