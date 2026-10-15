@@ -29,7 +29,8 @@ def test_key_order_and_storage(nokey, monkeypatch):
         L.Client()
     path = L.save_key("  abc123 ")
     assert path.startswith(P.work_root()) and L.find_key() == ("abc123", "config")
-    assert oct(os.stat(path).st_mode & 0o777) == "0o600"
+    if os.name != "nt":  # Windows 는 chmod 권한 비트가 없다
+        assert oct(os.stat(path).st_mode & 0o777) == "0o600"
     monkeypatch.setenv("LAW_API_OC", "envkey")
     assert L.find_key() == ("envkey", "env:LAW_API_OC")
     monkeypatch.setenv("INTENT_BRIEF_LAW_OC", "first")
