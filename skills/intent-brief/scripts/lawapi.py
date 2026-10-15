@@ -16,6 +16,7 @@ MCP 를 거치지 않는다. 표준 라이브러리만 쓴다.
   lawapi.py detail <target> <ID>
 """
 import argparse
+import http.client
 import json
 import os
 import re
@@ -131,13 +132,15 @@ class Client:
                 with urllib.request.urlopen(url, timeout=self.timeout) as r:
                     body = r.read().decode("utf-8")
                 self.calls += 1
+            except UnicodeDecodeError:
+                raise Unavailable("응답을 UTF-8 로 읽지 못했습니다")
             except urllib.error.HTTPError as e:
                 err = Unavailable("HTTP %s" % e.code)
                 if e.code >= 500 or e.code == 429:
                     time.sleep(self.backoff * (attempt + 1))
                     continue
                 raise err
-            except (urllib.error.URLError, TimeoutError, socket.timeout, ConnectionError) as e:
+            except (urllib.error.URLError, http.client.HTTPException, TimeoutError, socket.timeout, OSError) as e:
                 err = Unavailable("연결 실패 또는 타임아웃: %s" % _mask(e))
                 time.sleep(self.backoff * (attempt + 1))
                 continue

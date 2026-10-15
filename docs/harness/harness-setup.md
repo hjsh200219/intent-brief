@@ -5,7 +5,7 @@
 ## 구조
 - 새 스크립트는 `skills/intent-brief/scripts/` 에 두고 `_paths` 의 저장·출력 함수(`atomic_write_*`, `emit`, `fail`)를 쓴다. 따로 만들면 원자 저장·오류 JSON 형식이 갈린다.
 - SKILL.md 에 판단 규칙을 산문으로 늘리지 말고, 결정론으로 끝나는 일은 스크립트 + 테스트로 만든다(`check_draft.py` 가 선례).
-- 의도·섹션 어휘는 `references/intent-params.json` 이 정본이다. 코드·SKILL.md 에 섹션 id 를 새로 박지 않는다.
+- 의도·섹션 어휘는 `skills/intent-brief/references/intent-params.json` 이 정본이다(루트 `references/` 는 내장 스킬 공용 문서). 코드·SKILL.md 에 섹션 id 를 새로 박지 않는다.
 
 ## 받는 PC
 - Python 3.9: `match`·`X | Y` 타입 같은 문법뿐 아니라 `sys.stdlib_module_names`(3.10+) 같은 API 도 없다. 테스트도 3.9 로 한 번 돌린다(Health Stack).
@@ -24,3 +24,5 @@
 | `_paths.py` — 경로·작업 폴더·원자 저장·금액·JSON 출력 | 모든 스크립트 |
 | `state.py` — 인터뷰 상태 읽기·쓰기 | `intent`·`memo`·`check_draft`·`render_docx` |
 | `check_draft` — draft.md 파싱(`parse_draft`·`split_front`) | `render_docx`(`split_front`·앵커 정규식), `dev/e2e.py` |
+| `lawapi.py` — 법제처 Open API 호출·키(OC) 보관·오류 분류 | `cite_check`, SKILL.md·내장 스킬(`references/law-lookup.md` 명령) |
+| `casesearch.py` — case-search(빅케이스) 감지·호출 | `cite_check`, SKILL.md·내장 스킬 |

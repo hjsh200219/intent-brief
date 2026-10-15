@@ -100,6 +100,7 @@ class CachedClient:
         os.makedirs(cache_dir, exist_ok=True)
         self.deadline = deadline
         self.calls = 0
+        self.written = []  # 이번 대조에서 새로 쓴 캐시 — 형식 오류면 지운다
 
     def get(self, path, **params):
         key = hashlib.sha256(json.dumps([path, params], sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()[:24]
@@ -112,7 +113,16 @@ class CachedClient:
         self.calls += 1
         P.atomic_write_text(fp, L._mask(json.dumps(obj, ensure_ascii=False)))
         P.atomic_write_json(fp[:-5] + ".req.json", {"path": path, "params": params})
+        self.written += [fp, fp[:-5] + ".req.json"]
         return obj
+
+    def forget_written(self):
+        for f in self.written:
+            try:
+                os.remove(f)
+            except OSError:
+                pass
+        self.written = []
 
 
 def _norm_no(s):
@@ -173,6 +183,9 @@ class Checker:
         if os.path.exists(fp):
             got = P.load_json(fp)
         else:
+            dl = self.client.deadline
+            if dl and dl - time.time() < CS.CALL_TIMEOUT:
+                return {"status": "pending", "detail": "시간 상한 — 빅케이스 조회는 다시 실행하면 이어 갑니다"}
             try:
                 got = {"hit": self.external.find_exact(c["number"], c.get("court"))}
             except CS.SearchError as e:
@@ -189,6 +202,7 @@ class Checker:
                 "external": hit, "cited_by": res.get("cited_by")}
 
     def check(self, c):
+        self.client.written = []
         try:
             return self.check_law(c) if c["kind"] == "law" else self.check_case(c)
         except L.KeyInvalid as e:
@@ -196,6 +210,7 @@ class Checker:
         except L.Unavailable as e:
             return {"status": "outage", "detail": str(e)[:200]}
         except L.FormatChanged as e:
+            self.client.forget_written()  # 틀린 응답이 캐시에 남아 다시 실행해도 같은 실패가 나지 않게
             return {"status": "format_changed", "detail": str(e)[:200]}
         except TimeoutError:
             return {"status": "pending", "detail": "시간 상한 — 다시 실행하면 캐시에서 이어 갑니다"}
@@ -223,12 +238,13 @@ def tag_draft(md, results, phrases):
 
 
 def run(draft_path, max_seconds=540, client=None, external="auto"):
+    deadline = time.time() + max_seconds  # case-search 상태 확인 시간까지 상한에 넣는다
     md = P.read_text(draft_path)
     work = os.path.dirname(os.path.abspath(draft_path))
     cites = extract(md)
     if external == "auto":
         external = CS.client() if any(c["kind"] == "case" for c in cites) else None
-    chk = Checker(os.path.join(work, "cite"), client=client, deadline=time.time() + max_seconds, external=external)
+    chk = Checker(os.path.join(work, "cite"), client=client, deadline=deadline, external=external)
     results = []
     for c in cites:
         r = dict(c)
@@ -255,14 +271,14 @@ def main(argv=None):
     if a.cmd == "ping":
         oc, src = L.find_key()
         if not oc:
-            return P.emit({"ok": False, "error": "no_key", "guide": L.KEY_GUIDE})
+            return P.emit({"ok": False, "error": "no_key", "guide": L.KEY_GUIDE}, 4)
         try:
             L.find_prec_exact(L.Client(oc=oc), "2016다225353")
             return P.emit({"ok": True, "key_source": src})
         except L.KeyInvalid as e:
-            return P.emit({"ok": False, "error": "key_invalid", "detail": str(e), "guide": L.KEY_GUIDE})
+            return P.emit({"ok": False, "error": "key_invalid", "detail": str(e), "guide": L.KEY_GUIDE}, 4)
         except (L.Unavailable, L.FormatChanged) as e:
-            return P.emit({"ok": False, "error": "outage", "detail": str(e), "note": "인용 대조만 장애 태그로 표시하고 계속합니다"})
+            return P.emit({"ok": False, "error": "outage", "detail": str(e), "note": "인용 대조만 장애 태그로 표시하고 계속합니다"}, 5)
     if a.cmd == "extract":
         return P.emit({"ok": True, "citations": extract(P.read_text(a.draft))})
     if a.cmd == "run":

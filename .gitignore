@@ -4,3 +4,4 @@ __pycache__/
 tests/_out/
 .DS_Store
 .omc/
+_workspace/

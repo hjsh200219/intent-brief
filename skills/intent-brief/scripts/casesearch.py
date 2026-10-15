@@ -26,6 +26,9 @@ STATUS_TIMEOUT = 180  # 첫 실행은 uv 가 의존성을 받느라 오래 걸�
 CALL_TIMEOUT = 90
 
 
+_EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+
+
 class SearchError(Exception):
     """case-search 호출 실패(없음과 구분)."""
 
@@ -80,11 +83,15 @@ def _run(uv, script, args, timeout):
     if p.returncode != 0:
         if re.search(r"HTTP 404", err):
             return None
-        raise SearchError(err.strip().splitlines()[-1][:200] if err.strip() else "종료 코드 %d" % p.returncode)
+        msg = err.strip().splitlines()[-1][:200] if err.strip() else "종료 코드 %d" % p.returncode
+        raise SearchError(_EMAIL.sub("***@***", msg))  # 결과 파일에 계정 이메일이 남지 않게
     try:
-        return json.loads(out)
+        obj = json.loads(out)
     except ValueError:
         raise SearchError("case-search 응답을 해석하지 못했습니다")
+    if not isinstance(obj, dict):
+        raise SearchError("case-search 응답 형식이 예상과 다릅니다")
+    return obj
 
 
 def detect():

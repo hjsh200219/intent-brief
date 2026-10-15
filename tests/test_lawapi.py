@@ -176,3 +176,26 @@ def test_cli_no_key(nokey, capsys):
     assert L.main(["law", "민법"]) == 4
     out = json.loads(capsys.readouterr().out)
     assert out["error"] == "no_key" and "open.law.go.kr" in out["guide"]
+
+
+def test_read_errors_become_unavailable(monkeypatch):
+    """응답 읽기·디코딩 중 오류도 장애로 — 대조가 중간에 죽지 않게."""
+    import http.client
+    import urllib.request
+
+    class Resp:
+        def __init__(self, exc):
+            self.exc = exc
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            raise self.exc
+    for exc in (http.client.IncompleteRead(b"x"), UnicodeDecodeError("utf-8", b"\xff", 0, 1, "bad")):
+        monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **k: Resp(exc))
+        with pytest.raises(L.Unavailable):
+            L.Client(oc="k", interval=0, backoff=0).get("lawSearch.do", target="law", query="민법")

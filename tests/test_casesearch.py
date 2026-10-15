@@ -113,3 +113,21 @@ def test_find_exact_by_search_when_court_unknown(plugin):
     assert hit["number"] == "2014다26187" and plugin.calls()[-1][0] == "search"
     c.find_exact("2014다26187", court="대법원")
     assert plugin.calls()[-1][:2] == ["case", "대법원"]
+
+
+def test_non_dict_json_is_search_error(plugin, tmp_path):
+    import casesearch as CS2
+    c = CS.client()
+    p = [x for x in (tmp_path / "cache").rglob("bigcase.py")][0]
+    p.write_text("import json; print(json.dumps([1, 2]))\n", encoding="utf-8")
+    with pytest.raises(CS2.SearchError):
+        c.case("대법원", "2014다26187")
+
+
+def test_error_masks_email(plugin, tmp_path):
+    p = [x for x in (tmp_path / "cache").rglob("bigcase.py")][0]
+    p.write_text("import sys; sys.stderr.write('✗ lawyer@firm.kr 로그인 실패\\n'); sys.exit(1)\n", encoding="utf-8")
+    c = CS.Client(str(p), CS.find_uv())
+    with pytest.raises(CS.SearchError) as e:
+        c.case("대법원", "2014다26187")
+    assert "lawyer@firm.kr" not in str(e.value)

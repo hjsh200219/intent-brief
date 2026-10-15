@@ -214,3 +214,25 @@ def test_run_end_to_end(tmp_path):
     text = draft.read_text(encoding="utf-8")
     assert "2014다26187 판결 [확인 필요: 법제처 미확인]" in text and text.count("[확인 필요") == 1
     assert (d / "cite_results.json").exists()
+
+
+def test_format_changed_not_cached(tmp_path):
+    """형태가 틀린 응답은 캐시에 남기지 않는다 — 다시 실행하면 새로 부른다."""
+    bad = [({"query": "민사소송법"}, {"이상한": "응답"})]
+    assert chk(tmp_path, bad).check(LAW288)["status"] == "format_changed"
+    c2 = C.Checker(str(tmp_path / "cite"), client=FakeLaw(LAWS))
+    assert c2.check(LAW288)["status"] == "confirmed" and c2.calls == 2
+
+
+def test_external_respects_deadline(tmp_path):
+    import time as _t
+    ext = FakeExternal(HIT)
+    c = C.Checker(str(tmp_path / "cite"), client=FakeLaw(MISSING), external=ext, deadline=_t.time() + 5)
+    r = c.check(C2014)
+    assert r["status"] == "pending" and ext.calls == []  # 남은 시간이 빅케이스 호출 상한보다 짧으면 부르지 않는다
+
+
+def test_ping_exit_codes(home, monkeypatch, capsys):
+    for k in ("INTENT_BRIEF_LAW_OC", "LAW_API_OC"):
+        monkeypatch.delenv(k, raising=False)
+    assert C.main(["ping"]) == 4

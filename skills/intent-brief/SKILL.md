@@ -22,7 +22,7 @@ description: "변호사가 이번 민사 준비서면·답변서로 얻으려는
 - 작업 폴더: macOS `~/.intent-brief/cases/<사건 키>/`, Windows `%LOCALAPPDATA%\intent-brief\cases\<사건 키>\`. 플러그인을 지워도 남는다. 지우려면 `"$PY" "$S/state.py" purge <사건폴더>` (전부는 `--all`).
 - 법제처 키(OC): 처음에 `"$PY" "$S/lawapi.py" key status`. `configured: false` 면 `guide` 문구로 변호사에게 OC 값을 일반 텍스트로 요청하고, 받으면 `printf '%s\n' '<OC>' | "$PY" "$S/lawapi.py" key set --stdin` 으로 저장한다(판례 1건 조회로 검증 — `key_invalid` 면 키가 틀렸거나 이 PC IP 가 법제처에 등록되지 않은 것이니 그대로 알린다. 법제처 장애(`outage`)로 검증이 안 되면 `--no-check` 를 붙여 저장하고 나중에 `cite_check.py ping` 으로 확인한다). 키 값은 다시 출력하거나 다른 파일에 적지 않는다. 키 없이도 인터뷰·설계·초안은 진행하되 인용 대조(7)는 키를 받은 뒤에 한다.
 - 빅케이스(case-search 플러그인): `"$PY" "$S/casesearch.py" status` — `available: true` 면 자동으로 연결된다(설치·로그인돼 있을 때만, 따로 묻지 않는다). 쓰는 곳: ① 인용 대조에서 법제처에 원문이 없는 판례를 한 건당 한 번 찾는다(스크립트가 알아서) ② 의도 유불리 검토·쟁점 정리에서 근거 판례 후보를 찾을 때 `casesearch.py search "<검색어>"`·`casesearch.py case <법원> <사건번호>`. 변호사 본인 빅케이스 계정(키체인)을 쓰며 토큰이 만료돼 있으면 case-search 가 다시 로그인한다. 사람이 화면에서 찾는 정도로만 부르고 페이지를 끝까지 넘기지 않는다(case-search 이용 범위). `available: false` 면 법제처만 쓴다.
-- 인용 대조 연결 확인: `"$PY" "$S/cite_check.py" ping` — 장애면 계속한다(인용 대조만 장애 태그). 법령·판례를 찾아볼 때도 이 스크립트를 쓴다: `lawapi.py law <법령명> --article 288`, `lawapi.py prec-search <검색어> [--fulltext] [--court 대법원]`, `lawapi.py prec <판례일련번호>`.
+- 인용 대조 연결 확인: `"$PY" "$S/cite_check.py" ping` — 장애면 계속한다(인용 대조만 장애 태그). 법령·판례를 찾아볼 때는 `lawapi.py` 를 쓴다(명령 전체는 플러그인 루트 `references/law-lookup.md`): `lawapi.py law <법령명> --article 288`, `lawapi.py prec-search <검색어> [--fulltext] [--court 대법원]`, `lawapi.py prec <판례일련번호>`.
 
 ## 1. 시작
 
