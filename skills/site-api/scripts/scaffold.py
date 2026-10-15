@@ -19,6 +19,8 @@ SLUG_RE = re.compile(r"^[a-z][a-z0-9-]{1,30}$")
 FIELD_RE = re.compile(r"^[A-Za-z_][\w.-]{0,63}$")
 PATH_RE = re.compile(r"^/[\w./~%-]{0,200}$")
 PLACEHOLDER = re.compile(r"\{\{([A-Z_]+)\}\}")
+DEFAULTS = {"auth": "bearer-login", "login_path": "/auth/login", "id_field": "email", "pw_field": "password",
+            "token_field": "accessToken"}
 
 
 def default_out_dir():
@@ -42,8 +44,8 @@ def _check_base(base):
     return base.strip().rstrip("/")
 
 
-def scaffold(slug, base, auth="bearer-login", login_path="/auth/login", id_field="email", pw_field="password",
-             token_field="accessToken", title=None, out_dir=None):
+def scaffold(slug, base, auth=DEFAULTS["auth"], login_path=DEFAULTS["login_path"], id_field=DEFAULTS["id_field"],
+             pw_field=DEFAULTS["pw_field"], token_field=DEFAULTS["token_field"], title=None, out_dir=None):
     if not SLUG_RE.match(slug or ""):
         raise ValueError("이름은 영문 소문자로 시작하는 2–31자(소문자·숫자·-)입니다: %r" % slug)
     if auth not in AUTH_MODES:
@@ -88,11 +90,11 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="사이트 API 클라이언트 만들기")
     ap.add_argument("slug")
     ap.add_argument("base", help="API 기준 주소(https://호스트/경로)")
-    ap.add_argument("--auth", default="bearer-login", choices=AUTH_MODES)
-    ap.add_argument("--login-path", default="/auth/login")
-    ap.add_argument("--id-field", default="email")
-    ap.add_argument("--pw-field", default="password")
-    ap.add_argument("--token-field", default="accessToken")
+    ap.add_argument("--auth", default=DEFAULTS["auth"], choices=AUTH_MODES)
+    ap.add_argument("--login-path", default=DEFAULTS["login_path"])
+    ap.add_argument("--id-field", default=DEFAULTS["id_field"])
+    ap.add_argument("--pw-field", default=DEFAULTS["pw_field"])
+    ap.add_argument("--token-field", default=DEFAULTS["token_field"])
     ap.add_argument("--title")
     ap.add_argument("--out")
     a = ap.parse_args(argv)

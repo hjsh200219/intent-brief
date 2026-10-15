@@ -14,3 +14,4 @@
 | TD-011 | 빅케이스 테스트(`tests/case_search/`)는 scrapling·keyring 이 없는 기본 명령에서 통째로 skipped 되고, `bigcase.py` 줄 커버리지는 51%(2026-10-15 0.4.0 GC) | 기본 Health Stack 만 돌리면 빅케이스 회귀를 못 봄 | 로컬 GC 스크립트(`/sh:harness-setup --infra`)가 셋째 줄까지 돌리게 하고 setup·로그인 경로 테스트 추가 |
 | TD-012 | 빅케이스 API 계약은 2026-10-15 수동 실측뿐이고 녹화 응답이 없다(비공식 API) | 빅케이스가 응답 형식을 바꾸면 테스트는 통과하고 실사용만 깨짐 | 실계정 정보를 가린 녹화 응답으로 계약 테스트 |
 | TD-013 | `litigation-calc` 공휴일 표는 2024–2028 이다(2029년 특일정보 미발표, 2026-10-15) | 2029년 이후 만료일은 토·일만 반영하고 경고를 낸다(임시공휴일은 `--holiday`) | 한국천문연구원이 2029년 자료를 내면(보통 전년도 중반) `dev/holidays_kasi.py 2024 2029` 로 다시 만들고 `test_holiday_table_shape` 범위를 올린다 |
+| TD-014 | uv inline 의존성이 하한만 있다(`scrapling[fetchers]>=0.4.11`, `keyring>=25`)·lock 파일 없음(GC Run #2 P10 4점) | Scrapling 새 판이 API 를 바꾸면 빅케이스·site-api 가 받는 PC 에서 깨질 수 있음 | 실측 판(0.4.15)으로 상한을 둘지, 판 올림 때 빅케이스 테스트(Health Stack 셋째 줄)를 돌리는 절차로 둘지 결정 |

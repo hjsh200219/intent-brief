@@ -97,6 +97,8 @@ def case_dirs():
             if os.path.isdir(full):
                 add(full)
     for st in glob.glob(os.path.join(P.work_root(), "cases", "*", "*_state.json")):
+        if time.time() - started > TIME_BUDGET:
+            return out
         try:
             with open(st, encoding="utf-8") as f:
                 d = json.load(f).get("case_dir")
@@ -122,14 +124,17 @@ def schedule_items(case_dir, today):
     md = P.read_text(path)
     items = []
     for ln in M.section_text(md, M.SCHEDULE_TITLES).splitlines():
-        m = DATE.search(ln)
-        if not m or DONE.search(ln):
+        ms = list(DATE.finditer(ln))
+        if not ms or DONE.search(ln):
             continue
+        m = ms[0]
+        if len(ms) > 1 and re.search(r"[~∼〜]|부터", ln[ms[0].end():ms[1].start()]):
+            m = ms[1]  # 「시작~끝」 기간 줄은 끝 날짜가 기한이다(괄호 안 송달일 같은 참고 날짜는 무시)
         try:
             d = date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
         except ValueError:
             continue
-        text = (ln[:m.start()] + ln[m.end():]).strip(" -*\t")
+        text = (ln[:ms[0].start()] + ln[m.end():]).strip(" -*\t~∼〜")
         text = re.sub(r"^\d{1,2}:\d{2}\s*", "", text).strip()
         items.append({"case": os.path.basename(case_dir.rstrip("\\/")), "case_dir": case_dir, "date": d.isoformat(),
                       "d_day": (d - today).days, "text": text, "kind": _kind(text), "critical": bool(CRITICAL.search(text))})
@@ -138,8 +143,10 @@ def schedule_items(case_dir, today):
 
 def scan(days=IMMINENT_DAYS, today=None):
     today = today or P.today()
-    items = []
+    items, started = [], time.time()
     for d in case_dirs():
+        if time.time() - started > TIME_BUDGET:  # 훅 timeout(10초) 안에 끝내도록 읽기도 예산을 둔다
+            break
         items += [i for i in schedule_items(d, today) if 0 <= i["d_day"] <= days]
     items.sort(key=lambda i: (i["date"], not i["critical"], i["case"]))
     return {"ok": True, "today": today.isoformat(), "days": days, "items": items}

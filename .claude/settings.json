@@ -2,7 +2,9 @@
   "permissions": {
     "deny": [
       "Read(./.env)",
-      "Read(./.env.*)"
+      "Read(./.env.*)",
+      "Read(~/.intent-brief/config.json)",
+      "Read(~/.case-search/**)"
     ]
   }
 }

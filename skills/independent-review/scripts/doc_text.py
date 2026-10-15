@@ -27,8 +27,15 @@ def _docx_paragraphs(path):
         if z.getinfo("word/document.xml").file_size > MAX_XML:
             raise ValueError("document.xml 이 너무 큽니다(%d MB 초과)" % (MAX_XML // 2**20))
         raw = z.read("word/document.xml")
+    # Word 는 본문을 UTF-8 로 쓴다 — 다른 인코딩(UTF-16 등)은 바이트 검사를 피할 수 있어 거부한다.
+    if raw[:2] in (b"\xff\xfe", b"\xfe\xff") or b"\x00" in raw[:512]:
+        raise ValueError("UTF-8 이 아닌 docx 본문은 읽지 않습니다(정상 Word 문서가 아님)")
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        raise ValueError("UTF-8 이 아닌 docx 본문은 읽지 않습니다(정상 Word 문서가 아님)")
     # 정상 docx 본문에는 DTD 가 없다 — 엔티티 폭증(billion laughs) 문서를 파싱하기 전에 거부한다(표준 라이브러리만 쓰는 대신).
-    if re.search(rb"<!(DOCTYPE|ENTITY)", raw[:4096] + raw[-4096:]) or b"<!ENTITY" in raw:
+    if re.search(r"<!\s*(DOCTYPE|ENTITY)", text, re.I):
         raise ValueError("DTD·엔티티 선언이 든 docx 는 읽지 않습니다(정상 Word 문서가 아님)")
     root = ET.fromstring(raw)
     body = root.find(W + "body")

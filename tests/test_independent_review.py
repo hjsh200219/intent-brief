@@ -100,3 +100,15 @@ def test_docx_with_entities_rejected(tmp_path):
         z.writestr("word/document.xml", xml)
     with pytest.raises(ValueError):
         T.read_doc(path)
+
+
+def test_docx_utf16_entities_rejected(tmp_path):
+    """UTF-16 으로 인코딩해 바이트 검사를 피한 엔티티 선언도 거부한다(GC Run #2 지적)."""
+    import zipfile
+    path = str(tmp_path / "bomb16.docx")
+    xml = ('<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE w [<!ENTITY a "x">]>'
+           '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>&a;</w:t></w:r></w:p></w:body></w:document>')
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("word/document.xml", xml.encode("utf-16"))
+    with pytest.raises(ValueError):
+        T.read_doc(path)

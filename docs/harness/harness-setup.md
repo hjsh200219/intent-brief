@@ -8,8 +8,8 @@
 - 의도·섹션 어휘는 `skills/intent-brief/references/intent-params.json` 이 정본이다(루트 `references/` 는 내장 스킬 공용 문서). 코드·SKILL.md 에 섹션 id 를 새로 박지 않는다.
 
 ## 받는 PC
-- Python 3.9(`skills/intent-brief/scripts/` 한정 — `bigcase.py` 는 uv 로 3.10+·Scrapling 을 쓴다): `match`·`X | Y` 타입 같은 문법뿐 아니라 `sys.stdlib_module_names`(3.10+) 같은 API 도 없다. 테스트도 3.9 로 한 번 돌린다(Health Stack).
-- Windows: 한글 경로·CRLF 사건메모·`%LOCALAPPDATA%`. 콘솔 코드 페이지가 UTF-8 이 아닐 수 있어 표준출력은 `_paths.emit` 가 UTF-8 바이트로 직접 쓴다 — 스크립트에서 `print` 로 결과를 내지 않는다. 예외는 `bigcase.py`(L3b) — `main()` 이 stdout·stderr 를 UTF-8 로 고정한 뒤 `print` 를 쓰고, `casesearch.py` 는 하위 프로세스에 `PYTHONIOENCODING=utf-8` 을 넘긴다(cp949 콘솔에서 사건번호가 깨지던 것, 2026-10-15).
+- Python 3.9(`skills/intent-brief/scripts/`·`foreigncase.py`·0.6.0 스킬 스크립트(L3d) — `bigcase.py`·site-api `discover.py`·생성 클라이언트는 uv 로 3.10+·Scrapling 을 쓴다): `match`·`X | Y` 타입 같은 문법뿐 아니라 `sys.stdlib_module_names`(3.10+) 같은 API 도 없다. 테스트도 3.9 로 한 번 돌린다(Health Stack).
+- Windows: 한글 경로·CRLF 사건메모·`%LOCALAPPDATA%`. 콘솔 코드 페이지가 UTF-8 이 아닐 수 있어 표준출력은 `_paths.emit` 가 UTF-8 바이트로 직접 쓴다 — 스크립트에서 `print` 로 결과를 내지 않는다. 예외는 `bigcase.py`(L3b)와 `_paths` 를 쓰지 않는 독립 스크립트(`foreigncase.py`, 0.6.0 L3d·L3e) — `main()` 이 stdout·stderr 를 UTF-8 로 `reconfigure` 한 뒤 `print` 를 쓰고, `casesearch.py` 는 하위 프로세스에 `PYTHONIOENCODING=utf-8` 을 넘긴다(cp949 콘솔에서 사건번호가 깨지던 것, 2026-10-15).
 
 ## 원격(법제처 Open API, `lawapi.py`)
 - 판례 정확 일치는 사건번호 파라미터 `nb` 로 찾는다(2026-10-15 실측: 2016다225353·2018다248626 모두 1건). `query` 는 사건명 검색이라 번호로는 안 걸리고, 본문 검색은 `search=2`.
@@ -34,7 +34,7 @@
 ## 공유 모듈
 | 모듈 | 쓰는 곳 |
 |---|---|
-| `_paths.py` — 경로·작업 폴더·원자 저장·금액·JSON 출력 | 모든 스크립트 |
+| `_paths.py` — 경로·작업 폴더·원자 저장·금액·JSON 출력 | `skills/intent-brief/scripts/` 전부, `dday.py` (0.6.0 의 다른 스킬 스크립트·`foreigncase.py`·`bigcase.py`·site-api 는 쓰지 않고 독립 실행) |
 | `state.py` — 인터뷰 상태 읽기·쓰기 | `intent`·`memo`·`check_draft`·`render_docx` |
 | `check_draft` — draft.md 파싱(`parse_draft`·`split_front`) | `render_docx`(`split_front`·앵커 정규식), `dev/e2e.py` |
 | `lawapi.py` — 법제처 Open API 호출·키(OC) 보관·오류 분류 | `cite_check`, SKILL.md·내장 스킬(`references/law-lookup.md` 명령) |

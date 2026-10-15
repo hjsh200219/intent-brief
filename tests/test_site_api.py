@@ -157,3 +157,24 @@ def test_robots_honors_claude_user_rules():
     assert DV.robots_decision(only_star, "https://x.kr/")[0] is True
     assert DV.robots_decision(only_star, "https://x.kr/search/?q=a") == (False, ["Claude-User", "*"])
     assert DV.robots_decision("", "https://x.kr/search/")[0] is True
+
+
+def test_robots_network_failure_stops(monkeypatch):
+    """robots.txt 를 못 읽으면(네트워크·5xx) 허용하지 않고 멈춘다. 없으면(404) 진행한다."""
+    import urllib.error
+    import discover as DV
+
+    def boom(*a, **k):
+        raise OSError("timeout")
+    monkeypatch.setattr(DV.urllib.request, "urlopen", boom)
+    ok, note, blocked = DV.robots_allows("https://x.example.kr/")
+    assert ok is False and "다시" in note
+
+    def e(code):
+        def f(*a, **k):
+            raise urllib.error.HTTPError("u", code, "m", {}, None)
+        return f
+    monkeypatch.setattr(DV.urllib.request, "urlopen", e(503))
+    assert DV.robots_allows("https://x.example.kr/")[0] is False
+    monkeypatch.setattr(DV.urllib.request, "urlopen", e(404))
+    assert DV.robots_allows("https://x.example.kr/")[0] is True

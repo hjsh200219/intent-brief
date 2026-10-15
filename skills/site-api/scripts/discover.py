@@ -52,9 +52,11 @@ def robots_allows(url: str) -> tuple[bool, str, list[str]]:
     except urllib.error.HTTPError as e:
         if e.code in (401, 403):
             return False, f"{robots} 접근 거부(HTTP {e.code}) — 자동 접근을 막는 사이트로 본다", ["*"]
+        if e.code >= 500:
+            return False, f"{robots} 서버 오류(HTTP {e.code}) — 규칙을 알 수 없어 멈춘다. 나중에 다시 시도", ["*"]
         return True, f"{robots} 없음(HTTP {e.code})", []
-    except Exception as e:  # noqa: BLE001 — robots.txt 를 못 읽으면 막지 않되 기록한다
-        return True, f"robots.txt 읽기 실패({type(e).__name__}) — 이용약관을 직접 확인하세요", []
+    except Exception as e:  # noqa: BLE001 — 규칙을 모르는 채 진행하지 않는다(Claude-User 차단을 건너뛰게 됨)
+        return False, f"robots.txt 읽기 실패({type(e).__name__}) — 규칙을 알 수 없어 멈춘다. 다시 시도", ["*"]
     ok, blocked = robots_decision(text, url)
     return ok, robots, blocked
 
@@ -120,8 +122,8 @@ def cdp_capture(url: str, cdp: str, scroll: int) -> list[dict]:
             if "json" in item["content_type"]:
                 try:
                     item["response_shape"] = shape(resp.json())
-                except Exception:  # noqa: BLE001
-                    pass
+                except Exception as e:  # noqa: BLE001 — 본문을 못 읽은 응답(리다이렉트·잘림)도 요청 목록에는 남긴다
+                    item["response_shape"] = f"읽기 실패({type(e).__name__})"
             seen.append(item)
 
         page.on("response", on_response)

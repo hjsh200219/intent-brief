@@ -123,3 +123,35 @@ def test_not_done_lines_are_kept(home, tmp_path):
     _case(root, "261002_가명정", memo)
     DD.roots_add(str(root))
     assert [i["date"] for i in DD.scan(days=14)["items"]] == ["2026-09-20", "2026-09-21"]
+
+
+def test_range_line_uses_end_date(home, tmp_path):
+    """「시작~끝」 줄은 끝 날짜가 기한이다. 괄호 안 참고 날짜(송달일)는 기한이 아니다."""
+    memo = "## 주요 일정\n- 2026.09.01~2026.09.20 항소이유서 제출기한\n- 2026-09-18 항소 기한 (판결서 송달 2026-09-04)\n"
+    root = tmp_path / "사건"
+    _case(root, "261003_가명무", memo)
+    DD.roots_add(str(root))
+    assert [i["date"] for i in DD.scan(days=14)["items"]] == ["2026-09-18", "2026-09-20"]
+
+
+def test_dday_stdlib_and_local_imports_only():
+    import ast
+    tree = ast.parse(open(DDAY, encoding="utf-8").read(), feature_version=(3, 9))
+    mods = {a.name.split(".")[0] for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names}
+    mods |= {n.module.split(".")[0] for n in ast.walk(tree) if isinstance(n, ast.ImportFrom) and n.module}
+    assert mods <= {"argparse", "glob", "json", "os", "re", "sys", "time", "datetime", "_paths", "memo", "deadline"}, mods
+
+
+def test_work_dirs_match_intent_brief_root(home):
+    """작업 폴더 루트 규칙은 skill 마다 복제돼 있다 — intent-brief _paths.work_root 와 같아야 한다."""
+    import importlib
+    sys.path.insert(0, os.path.join(ROOT, "skills", "intent-brief", "scripts"))
+    sys.path.insert(0, os.path.join(ROOT, "skills", "review-contract", "scripts"))
+    sys.path.insert(0, os.path.join(ROOT, "skills", "site-api", "scripts"))
+    P, PB, SC = (importlib.import_module(m) for m in ("_paths", "playbook", "scaffold"))
+    os.environ.pop("LAWFIRM_PLAYBOOK_DIR", None)
+    os.environ.pop("LAWFIRM_SITE_API_DIR", None)
+    assert PB.playbook_dir() == os.path.join(P.work_root(), "playbooks")
+    assert SC.default_out_dir() == os.path.join(P.work_root(), "site-api")
+    tmpl = open(os.path.join(ROOT, "skills", "site-api", "templates", "client.py.tmpl"), encoding="utf-8").read()
+    assert '".intent-brief"' in tmpl and '"intent-brief"' in tmpl and '/ "site-api" / SLUG' in tmpl
