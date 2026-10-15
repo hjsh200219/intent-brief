@@ -328,16 +328,19 @@ def test_form_number_formats():
     assert L._form_number("", "서식") is None
 
 
+OLE = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\x00" * 8  # HWP 5.0 = OLE 복합 문서
+
+
 def test_form_get_saves_without_overwrite(tmp_path, monkeypatch):
     seen = []
 
     def fake(seq):
         seen.append(seq)
-        return "[별지 제3호서식] 표준 계약서.hwp", "application/hwp", b"HWP"
+        return "[별지 제3호서식] 표준 계약서.hwp", "application/hwp", OLE
     monkeypatch.setattr(L, "_download_form", fake)
     a = L.get_form("161650125", str(tmp_path))
     b = L.get_form("161650125", str(tmp_path))
-    assert os.path.basename(a["path"]) == "[별지 제3호서식] 표준 계약서.hwp" and a["bytes"] == 3
+    assert os.path.basename(a["path"]) == "[별지 제3호서식] 표준 계약서.hwp" and a["bytes"] == len(OLE)
     assert b["path"] != a["path"] and b["path"].endswith("_2.hwp")
     with pytest.raises(P.BriefError):
         L.get_form("../etc", str(tmp_path))
@@ -354,3 +357,13 @@ def test_form_filename_sanitized(tmp_path, monkeypatch):
 def test_form_download_host_is_fixed():
     src = open(L.__file__, encoding="utf-8").read()
     assert 'FORM_URL = "https://www.law.go.kr/LSW/flDownload.do?flSeq="' in src
+
+
+@pytest.mark.parametrize("ctype,body", [("text/html", b"<html>error</html>"), ("application/octet-stream", b"  <!DOCTYPE html><p>x"),
+                                        ("application/hwp", b""), ("application/hwp", b"HWP")])
+def test_form_get_rejects_error_pages(tmp_path, monkeypatch, ctype, body):
+    """HTTP 200 으로 온 HTML 오류 페이지·빈 본문을 서식 파일로 저장하지 않는다(Codex 지적 11)."""
+    monkeypatch.setattr(L, "_download_form", lambda seq: ("a.hwp", ctype, body))
+    with pytest.raises(L.Unavailable):
+        L.get_form("1", str(tmp_path))
+    assert os.listdir(str(tmp_path)) == []

@@ -2,11 +2,12 @@
 """기한·기일 D-day 점검 — 표준 라이브러리만, Python 3.9.
 
 사건 출처: ① 등록한 사건 루트 폴더의 바로 아래 폴더(사건메모.md 가 있는 것) ② intent-brief 작업 폴더의 상태 파일(case_dir).
-각 사건메모 「주요 일정」 절의 날짜 줄을 모아 오늘부터 N일(기본 14일) 안의 것을 알린다. 지운 줄(~~…~~)·완료 표시 줄은 뺀다.
+각 사건메모 「주요 일정」 절의 날짜 줄을 모아 오늘부터 N일(기본 14일) 안의 것을 알린다. 지운 부분(~~…~~)은 읽지 않고(「~~옛 날짜~~ 새 날짜」는 새 날짜),
+완료 표시 줄은 뺀다. scan 은 등록한 사건을 모두 본다. 훅만 세션 시작을 늦추지 않도록 사건 수·시간 상한을 두고, 상한에 걸리면 그렇다고 알린다.
 항소·상고·항고·이의·추후보완·재심·제소·시효·제척·불변 이 들어간 줄은 불변기간·시효로 강조한다.
 
   scan [--days N]            JSON
-  hook                       세션 시작 훅용 — 다가오는 것이 없으면 아무것도 출력하지 않는다. 어떤 오류에도 exit 0
+  hook                       세션 시작 훅용 — 다가오는 것이 없으면 아무것도 출력하지 않는다(상한에 걸리면 경고 1줄). 어떤 오류에도 exit 0
   roots add|remove <폴더> · roots list
 """
 import argparse
@@ -27,9 +28,10 @@ from deadline import IMMINENT_DAYS, WEEKDAYS  # noqa: E402
 DATE = re.compile(r"(20\d{2})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(\d{1,2})")
 CRITICAL = re.compile(r"항소|상고|항고|이의|추후보완|재심|제소|소\s*제기|시효|제척|불변")
 # 완료 「표시」만 — 「미완료」·「완료 예정」 줄을 빼면 있는 기한을 숨기게 된다
-DONE = re.compile(r"~~.+~~|\[[xX]\]|[(\[]\s*완료\s*[)\]]|(?<![미불])완료\s*$")
-MAX_DIRS = 500
-TIME_BUDGET = 4.0
+DONE = re.compile(r"\[[xX]\]|[(\[]\s*완료\s*[)\]]|(?<![미불])완료\s*$")
+STRUCK = re.compile(r"~~.*?~~")
+HOOK_MAX_DIRS = 500
+HOOK_TIME_BUDGET = 4.0  # 훅 timeout(10초) 안에 끝내도록
 MAX_LINES = 10
 
 
@@ -75,8 +77,12 @@ def roots_list():
     return {"ok": True, "roots": _load()["roots"]}
 
 
-def case_dirs():
-    seen, out, started = set(), [], time.time()
+def case_dirs(max_dirs=None, budget=None):
+    """(사건 폴더 목록, 상한에 걸려 다 못 봤는지). 상한은 훅만 준다."""
+    seen, out, started, cut = set(), [], time.time(), False
+
+    def over():
+        return budget is not None and time.time() - started > budget
 
     def add(d):
         key = P.nfc(os.path.abspath(d))
@@ -86,19 +92,21 @@ def case_dirs():
 
     for root in _load()["roots"]:
         try:
-            names = sorted(os.listdir(root))[:MAX_DIRS]
+            names = sorted(os.listdir(root))
         except OSError:
             continue
         add(root)
+        if max_dirs is not None and len(names) > max_dirs:
+            names, cut = names[:max_dirs], True
         for n in names:
-            if time.time() - started > TIME_BUDGET:
-                return out
+            if over():
+                return out, True
             full = os.path.join(root, n)
             if os.path.isdir(full):
                 add(full)
     for st in glob.glob(os.path.join(P.work_root(), "cases", "*", "*_state.json")):
-        if time.time() - started > TIME_BUDGET:
-            return out
+        if over():
+            return out, True
         try:
             with open(st, encoding="utf-8") as f:
                 d = json.load(f).get("case_dir")
@@ -106,7 +114,7 @@ def case_dirs():
             continue
         if isinstance(d, str) and os.path.isdir(d):
             add(d)
-    return out
+    return out, cut
 
 
 def _kind(text):
@@ -124,6 +132,7 @@ def schedule_items(case_dir, today):
     md = P.read_text(path)
     items = []
     for ln in M.section_text(md, M.SCHEDULE_TITLES).splitlines():
+        ln = STRUCK.sub("", ln)  # 취소선 부분만 뺀다 — 줄 전체가 지워졌으면 날짜가 남지 않는다
         ms = list(DATE.finditer(ln))
         if not ms or DONE.search(ln):
             continue
@@ -141,22 +150,29 @@ def schedule_items(case_dir, today):
     return items
 
 
-def scan(days=IMMINENT_DAYS, today=None):
+def scan(days=IMMINENT_DAYS, today=None, hook=False):
     today = today or P.today()
-    items, started = [], time.time()
-    for d in case_dirs():
-        if time.time() - started > TIME_BUDGET:  # 훅 timeout(10초) 안에 끝내도록 읽기도 예산을 둔다
+    budget = HOOK_TIME_BUDGET if hook else None
+    started = time.time()
+    dirs, incomplete = case_dirs(HOOK_MAX_DIRS if hook else None, budget)
+    items = []
+    for d in dirs:
+        if budget is not None and time.time() - started > budget:
+            incomplete = True
             break
         items += [i for i in schedule_items(d, today) if 0 <= i["d_day"] <= days]
     items.sort(key=lambda i: (i["date"], not i["critical"], i["case"]))
-    return {"ok": True, "today": today.isoformat(), "days": days, "items": items}
+    return {"ok": True, "today": today.isoformat(), "days": days, "items": items, "incomplete": incomplete}
 
 
 def hook_text(result):
-    items = result["items"]
+    items, lines = result["items"], []
+    if result.get("incomplete"):
+        lines.append("[lawfirm] 사건이 많아 세션 시작 점검에서 다 보지 못했습니다 — 전체는 `python3 \"%s\" scan` 으로 확인하십시오"
+                     % os.path.abspath(__file__))
     if not items:
-        return ""
-    lines = ["[lawfirm] %d일 안에 다가오는 기한·기일 %d건 — 사건메모 「주요 일정」 기준" % (result["days"], len(items))]
+        return "\n".join(lines) + "\n" if lines else ""
+    lines.append("[lawfirm] %d일 안에 다가오는 기한·기일 %d건 — 사건메모 「주요 일정」 기준" % (result["days"], len(items)))
     for i in items[:MAX_LINES]:
         d = date.fromisoformat(i["date"])
         tag = " [불변기간·시효 — 날짜 재확인]" if i["critical"] else ""
@@ -181,7 +197,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if a.cmd == "hook":
         try:
-            sys.stdout.write(hook_text(scan()))
+            sys.stdout.write(hook_text(scan(hook=True)))
         except Exception:  # noqa: BLE001 — 훅은 세션 시작을 막지 않는다
             pass
         return 0

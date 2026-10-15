@@ -1,4 +1,4 @@
-"""기한·기일 D-day 점검 — 사건메모 「주요 일정」을 모아 14일 이내를 알린다. 세션 시작 훅은 없으면 아무것도 출력하지 않는다."""
+"""기한·기일 D-day 점검 — 사건메모 「주요 일정」을 모아 14일 이내를 알린다. 세션 시작 훅은 없으면 아무것도 출력하지 않는다(상한에 걸리면 경고 1줄)."""
 import json
 import os
 import subprocess
@@ -155,3 +155,27 @@ def test_work_dirs_match_intent_brief_root(home):
     assert SC.default_out_dir() == os.path.join(P.work_root(), "site-api")
     tmpl = open(os.path.join(ROOT, "skills", "site-api", "templates", "client.py.tmpl"), encoding="utf-8").read()
     assert '".intent-brief"' in tmpl and '"intent-brief"' in tmpl and '/ "site-api" / SLUG' in tmpl
+
+
+def test_partial_strikethrough_keeps_corrected_date(home, tmp_path):
+    """「~~옛 날짜~~ 새 날짜」 정정 줄은 새 날짜로 알린다. 줄 전체 취소만 뺀다(Codex 지적 4)."""
+    memo = "## 주요 일정\n- ~~2026-09-17~~ 2026-09-20 항소기한 정정\n- ~~2026-09-19 감정서 제출~~\n"
+    root = tmp_path / "사건"
+    _case(root, "261004_가명기", memo)
+    DD.roots_add(str(root))
+    items = DD.scan(days=14)["items"]
+    assert [(i["date"], i["text"]) for i in items] == [("2026-09-20", "항소기한 정정")]
+
+
+def test_hook_warns_when_scan_incomplete(home, tmp_path, monkeypatch, capsys):
+    """훅의 사건 수·시간 상한에 걸리면 조용히 넘어가지 않고 경고한다. 수동 scan 은 상한 없이 끝까지 본다(Codex 지적 5)."""
+    root = tmp_path / "사건"
+    for k in range(3):
+        _case(root, "26100%d_가명" % k)
+    DD.roots_add(str(root))
+    monkeypatch.setattr(DD, "HOOK_MAX_DIRS", 1)
+    full = DD.scan(days=14)
+    assert full["incomplete"] is False and len({i["case"] for i in full["items"]}) == 3
+    assert DD.main(["hook"]) == 0
+    out = capsys.readouterr().out
+    assert "다 보지 못했습니다" in out and "dday.py" in out

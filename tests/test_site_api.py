@@ -1,6 +1,7 @@
 """site-api — URL 에서 API 후보를 찾고(extract), bigcase.py 와 같은 틀의 클라이언트를 만든다(scaffold)."""
 import ast
 import importlib.util
+import json
 import os
 import re
 import sys
@@ -178,3 +179,47 @@ def test_robots_network_failure_stops(monkeypatch):
     assert DV.robots_allows("https://x.example.kr/")[0] is False
     monkeypatch.setattr(DV.urllib.request, "urlopen", e(404))
     assert DV.robots_allows("https://x.example.kr/")[0] is True
+
+
+def test_endpoints_keep_origin_port():
+    """같은 호스트라도 포트가 다르면 다른 서비스다 — 절대 주소의 origin 을 지킨다(Codex 지적 10)."""
+    found = X.find_endpoints('fetch("https://example.org:8443/api/search")', "https://example.org/")
+    assert found["endpoints"] == [] and found["external"] == ["https://example.org:8443/api/search"]
+    same = X.find_endpoints('fetch("https://example.org:443/api/search")', "https://example.org/")
+    assert same["endpoints"][0]["url"] == "https://example.org/api/search"
+
+
+def test_urls_in_output_drop_query_values():
+    """출력·저장하는 주소에서 쿼리 값·fragment·계정 정보를 뺀다(Codex 지적 7)."""
+    assert X.clean_url("https://u:p@x.kr/login?token=SYN&a=1#f") == "https://x.kr/login"
+    html = '<form action="/login?token=SYN" method="post"></form>'
+    assert X.form_actions(html, "https://x.kr/") == [{"url": "https://x.kr/login", "method": "POST"}]
+
+
+def _client(tmp_path, slug="sec", base="https://law.example.kr/api"):
+    out = S.scaffold(slug, base, out_dir=str(tmp_path / "out"))
+    spec = importlib.util.spec_from_file_location(slug + "_c%d" % len(os.listdir(str(tmp_path / "out"))), out["path"])
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_client_redacts_secrets_in_output(tmp_path, monkeypatch):
+    """API 응답 속 토큰·비밀번호·쿠키 값은 출력하지 않는다(Codex 지적 2)."""
+    mod = _client(tmp_path)
+    data = {"accessToken": "SYN", "items": [{"name": "a", "refresh_token": "SYN2", "Set-Cookie": "x"}], "passwordHint": "h"}
+    red = mod.redact(data)
+    assert "SYN" not in json.dumps(red) and red["items"][0]["name"] == "a"
+    assert mod.redact("plain text body") == {"text_chars": 15}
+
+
+def test_client_refuses_session_from_other_api(tmp_path, monkeypatch):
+    """같은 이름으로 다른 주소의 클라이언트를 만들어도 앞 사이트의 세션·계정을 쓰지 않는다(Codex 지적 1)."""
+    monkeypatch.setenv("LAWFIRM_SITE_HOME", str(tmp_path / "home"))
+    a = _client(tmp_path, base="https://a.example.kr/api")
+    a.write_private(a.config_file(), {"id": "u", "api": a.API})
+    a.write_private(a.session_file(), {"id": "u", "api": a.API, "token": "TOK"})
+    b = _client(tmp_path, base="https://b.example.kr/api")
+    assert b.configured_id() is None
+    assert b.read_session() == {}
+    assert a.configured_id() == "u" and a.read_session()["token"] == "TOK"

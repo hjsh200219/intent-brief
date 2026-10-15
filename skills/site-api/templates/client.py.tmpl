@@ -25,6 +25,7 @@ import getpass
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import time
@@ -97,7 +98,14 @@ def keyring_backend():
 
 
 def configured_id() -> str | None:
-    return read_json(config_file()).get("id")
+    """이 파일의 API 로 등록한 계정만 — 같은 이름으로 다른 사이트 클라이언트를 만들면 앞 사이트의 계정을 쓰지 않는다."""
+    cfg = read_json(config_file())
+    return cfg.get("id") if cfg.get("api") == API else None
+
+
+def read_session() -> dict:
+    s = read_json(session_file())
+    return s if s.get("api") == API and s.get("id") == configured_id() else {}
 
 
 def stored_password(user: str) -> str | None:
@@ -106,12 +114,14 @@ def stored_password(user: str) -> str | None:
 
 def store_credentials(user: str, password: str) -> None:
     keyring_backend().set_password(KEYRING_SERVICE, user, password)
-    write_private(config_file(), {"id": user, "saved_at": int(time.time())})
+    write_private(config_file(), {"id": user, "api": API, "saved_at": int(time.time())})
+    if session_file().exists():
+        session_file().unlink()  # 앞 계정·앞 사이트의 세션을 남기지 않는다
 
 
 def forget_credentials() -> list[str]:
     done = []
-    user = configured_id()
+    user = read_json(config_file()).get("id")  # 다른 API 로 등록한 항목도 지운다
     if user:
         with contextlib.suppress(Exception):
             keyring_backend().delete_password(KEYRING_SERVICE, user)
@@ -204,7 +214,7 @@ class Client:
         logging.getLogger("scrapling").setLevel(logging.WARNING)
         self._fs = FetcherSession(impersonate="chrome", stealthy_headers=False, timeout=20, retries=1)
         self.http = self._fs.__enter__()
-        self.session = read_json(session_file())
+        self.session = read_session()
         self._last = 0.0
 
     def close(self):
@@ -236,7 +246,7 @@ class Client:
         data = _json(r)
         if r.status >= 400:
             raise SiteError(f"로그인 실패 HTTP {r.status}")
-        sess = {"id": user, "loggedInAt": int(time.time())}
+        sess = {"id": user, "api": API, "loggedInAt": int(time.time())}
         if AUTH == "bearer-login":
             token = _dig(data, TOKEN_FIELD)
             if not token:
@@ -254,8 +264,8 @@ class Client:
     def _auth_headers(self) -> dict:
         if AUTH == "none":
             return {}
-        if self.session.get("id") != configured_id():
-            self.session = {}  # 다른 계정의 세션은 쓰지 않는다
+        if self.session.get("id") != configured_id() or self.session.get("api") != API:
+            self.session = {}  # 다른 계정·다른 사이트의 세션은 쓰지 않는다
         if AUTH == "bearer-login":
             tok = self.session.get("token")
             exp = _jwt_exp(tok) if tok else 0
@@ -274,7 +284,7 @@ class Client:
             self._wait()
             r = fn(url, headers={**extra, **self._auth_headers()}, **kw)
             if r.status in (401, 403) and AUTH != "none" and attempt == 0:
-                self.session = {"id": configured_id()}  # 만료 판정 → 다시 로그인해 1회 재시도
+                self.session = {"id": configured_id(), "api": API}  # 만료 판정 → 다시 로그인해 1회 재시도
                 continue
             break
         data = _json(r)
@@ -284,6 +294,24 @@ class Client:
 
 
 # ---------- 명령 ----------
+
+SECRET_KEY = re.compile(r"(?i)token|passw|secret|cookie|session|authorization|api[_-]?key|credential")
+
+
+def _mask(data):
+    if isinstance(data, dict):
+        return {k: "***" if SECRET_KEY.search(str(k)) else _mask(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [_mask(v) for v in data]
+    return data
+
+
+def redact(data):
+    """출력 직전 — 응답 속 토큰·비밀번호·쿠키 값은 대화 기록에 남기지 않는다. JSON 이 아닌 본문(HTML 등)은 길이만."""
+    if isinstance(data, (str, bytes)):
+        return {"text_chars": len(data)}
+    return _mask(data)
+
 
 def emit(obj) -> None:
     print(json.dumps(obj, ensure_ascii=False, indent=1))
@@ -308,8 +336,10 @@ def main() -> int:
     a = ap.parse_args()
     try:
         if a.cmd == "status":
+            other = bool(read_json(config_file()).get("id")) and not configured_id()
             emit({"ok": True, "site": TITLE, "api": API, "auth": AUTH, "configured": bool(configured_id()) or AUTH == "none",
-                  "session_saved": session_file().exists()})
+                  "session_saved": bool(read_session()),
+                  **({"note": "다른 API 주소로 등록한 계정이 있습니다 — 이 사이트용으로 `setup` 을 다시 하십시오."} if other else {})})
             return 0
         if a.cmd == "forget":
             emit({"ok": True, "removed": forget_credentials()})
@@ -335,9 +365,9 @@ def main() -> int:
                 emit({"ok": True, "id": s.get("id"), "loggedInAt": s.get("loggedInAt")})
             elif a.cmd == "get":
                 params = dict(x.split("=", 1) for x in a.param)
-                emit({"ok": True, "data": c.request("get", a.path, params=params)})
+                emit({"ok": True, "data": redact(c.request("get", a.path, params=params))})
             else:
-                emit({"ok": True, "data": c.request("post", a.path, json=json.loads(a.json))})
+                emit({"ok": True, "data": redact(c.request("post", a.path, json=json.loads(a.json)))})
         return 0
     except (SiteError, ValueError) as e:
         emit({"ok": False, "error": str(e)})

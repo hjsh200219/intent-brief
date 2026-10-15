@@ -101,7 +101,7 @@ Claude Code 2.1.275 이상이면 한 줄로도 됩니다: `/plugin install lawfi
   `python <플러그인>/skills/intent-brief/scripts/state.py purge <사건폴더>` (전부: `--all`). 플러그인을 지워도 이 폴더는 남습니다.
 - 사건 폴더에 `사건메모.md`(업무관리 하네스 형식)가 있으면 진행 경과·할 일을 diff 확인 후 기록합니다. 없으면 기록하지 않습니다.
 - 빅케이스: 이메일 `~/.case-search/bigcase/config.json`(0600) · 비밀번호 OS 키체인(서비스 `case-search-bigcase`) · 토큰 `~/.case-search/bigcase/session.json`(0600). 환경변수 `BIGCASE_ID`/`BIGCASE_PW` 가 있으면 키체인보다 우선하고, `CASE_SEARCH_HOME` 으로 보관 폴더를 바꿉니다. 지우기: `uv run <플러그인>/skills/case-search/scripts/bigcase.py forget`.
-- 계약 검토 플레이북: 작업 폴더의 playbooks 폴더(playbook-contract.md·playbook-nda.md — 만들기 전에는 번들 기본값을 씀). 기한 점검 등록 폴더 목록: 작업 폴더의 dday.json. `site-api` 가 만든 클라이언트·세션: 작업 폴더 `site-api/`(자격증명은 키체인 `site-api-<이름>`).
+- 계약 검토 플레이북: 작업 폴더의 playbooks 폴더(playbook-contract.md·playbook-nda.md — 만들기 전에는 번들 기본값을 씀. 의뢰인별 기준은 `playbooks/<의뢰인>/`, `--profile <의뢰인>`). 기한 점검 등록 폴더 목록: 작업 폴더의 dday.json. `site-api` 가 만든 클라이언트·세션: 작업 폴더 `site-api/`(자격증명은 키체인 `site-api-<이름>`).
 - 해외 판례 토큰: `~/.case-search/foreign.json`(0600). 환경변수 `COURTLISTENER_API_TOKEN` 이 있으면 먼저 씁니다. 지우기: `python <플러그인>/skills/case-search/scripts/foreigncase.py key clear us`.
 
 ## 원격 서버 의존

@@ -8,7 +8,7 @@
 1) robots.txt 가 일반(*) 또는 AI 에이전트(Claude-User) 접근을 막으면 멈춘다. 2) 페이지와 같은 호스트의 스크립트(최대 MAX_SCRIPTS개, 요청 간격 1초)를 받아
 extract.py 로 정적 분석한다. 3) --cdp 를 주면 이미 떠 있는 Chrome(원격 디버깅 포트)에 붙어 실제 XHR·fetch 요청을 잡는다
 (로그인·검색을 사람이 그 창에서 해 두면 정확해진다). 응답 본문은 저장하지 않고 JSON 키 구조만 남긴다(개인정보 보호).
-Authorization·Cookie 헤더 값과 쿼리 인자 값은 기록하지 않는다(이름만).
+Authorization·Cookie 헤더 값과 쿼리 인자 값은 기록하지 않는다(이름만). 저장하는 주소에서도 계정 정보·쿼리·fragment 를 뺀다.
 """
 from __future__ import annotations
 
@@ -88,9 +88,9 @@ def static_scan(url: str) -> dict:
         try:
             r = Fetcher.get(src, impersonate="chrome", timeout=20)
         except Exception as e:  # noqa: BLE001
-            fetched.append({"url": src, "error": type(e).__name__})
+            fetched.append({"url": extract.clean_url(src), "error": type(e).__name__})
             continue
-        fetched.append({"url": src, "status": r.status, "bytes": len(r.body)})
+        fetched.append({"url": extract.clean_url(src), "status": r.status, "bytes": len(r.body)})
         if r.status == 200:
             texts.append(r.body.decode("utf-8", "replace"))
     out = extract.find_endpoints("\n".join(texts), url)
@@ -100,7 +100,7 @@ def static_scan(url: str) -> dict:
 
 def cdp_capture(url: str, cdp: str, scroll: int) -> list[dict]:
     from playwright.sync_api import sync_playwright
-    seen, host = [], urlparse(url).hostname
+    seen = []
     with sync_playwright() as p:
         browser = p.chromium.connect_over_cdp(cdp)
         ctx = browser.contexts[0] if browser.contexts else browser.new_context()  # 실제 Chrome 은 새 context 를 막는 경우가 있다
@@ -110,7 +110,8 @@ def cdp_capture(url: str, cdp: str, scroll: int) -> list[dict]:
             req = resp.request
             if req.resource_type not in ("xhr", "fetch"):
                 return
-            item = {"method": req.method, "url": req.url.split("?")[0], "same_host": urlparse(req.url).hostname == host, "query_params": query_names(urlparse(req.url).query),
+            item = {"method": req.method, "url": extract.clean_url(req.url), "same_host": extract._same_host(req.url, url),
+                    "query_params": query_names(urlparse(req.url).query),
                     "status": resp.status, "content_type": resp.headers.get("content-type", ""),
                     "request_headers": sorted(h for h in req.headers if h.lower() not in SECRET_HEADERS),
                     "has_auth_header": any(h.lower() in SECRET_HEADERS for h in req.headers)}
@@ -155,7 +156,7 @@ def main() -> int:
                           "message": "robots.txt 가 이 주소의 자동 접근을 막습니다(%s). 멈춥니다." % ", ".join(blocked)},
                          ensure_ascii=False))
         return 4
-    result = {"ok": True, "url": a.url, "robots": robots, "static": static_scan(a.url)}
+    result = {"ok": True, "url": extract.clean_url(a.url), "robots": robots, "static": static_scan(a.url)}
     if a.cdp:
         try:
             result["network"] = cdp_capture(a.url, a.cdp, a.scroll)

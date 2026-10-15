@@ -94,11 +94,17 @@ def _rate(r):
 
 
 def interest(principal, segments):
-    rows, total = [], 0
+    rows, total, spans = [], 0, []
     for start, end, r in segments:
         s, e = date.fromisoformat(str(start)), date.fromisoformat(str(end))
         if e < s:
             raise ValueError("구간 끝이 시작보다 앞입니다: %s ~ %s" % (start, end))
+        spans.append((s, e, r))
+    spans.sort(key=lambda x: x[0])
+    for (s0, e0, _), (s1, _e1, _r) in zip(spans, spans[1:]):
+        if s1 <= e0:  # 양 끝을 포함해 세므로 경계일을 두 구간에 넣으면 하루치 이자가 겹친다
+            raise ValueError("구간이 겹칩니다: %s ~ %s 와 %s ~ — 이율이 바뀌는 날은 한 구간에만 넣으십시오" % (s0, e0, s1))
+    for s, e, r in spans:
         rate, law = _rate(r)
         days = (e - s).days + 1
         amt = int(math.floor(Fraction(int(principal)) * rate * days / 365))

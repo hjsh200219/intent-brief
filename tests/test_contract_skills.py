@@ -90,3 +90,24 @@ def test_skill_docs(skill, name, cites):
 def test_notice_lists_adapted_skills():
     notice = read(os.path.join(ROOT, "third_party", "anthropic-legal", "NOTICE.md"))
     assert "review-contract" in notice and "triage-nda" in notice
+
+
+def test_client_profile_does_not_touch_office_playbook(home):
+    """의뢰인별 기준은 따로 둔다 — 고쳐도 사무소 기본 플레이북에 번지지 않는다(Codex 지적 8)."""
+    office = P.init("contract")
+    a = P.init("contract", profile="가나상사")
+    assert a["created"] is True and a["path"] != office["path"] and a["profile"] == "가나상사"
+    with open(a["path"], "a", encoding="utf-8") as f:
+        f.write("\n- 가나상사 기준: 책임 상한 200%\n")
+    assert "가나상사 기준" not in P.show("contract")["text"]
+    assert "가나상사 기준" in P.show("contract", profile="가나상사")["text"]
+    assert P.show("contract", profile="다라")["default"] is False  # 의뢰인 기준이 없으면 사무소 기본값
+    for bad in ("../x", "a/b", "", ".."):
+        with pytest.raises(ValueError):
+            P.path("contract", profile=bad)
+
+
+def test_review_contract_reads_whole_contract():
+    text = read(os.path.join(RC, "SKILL.md"))
+    assert "핵심 조항(대금·책임·해지·분쟁)부터 보고" not in text
+    assert "미검토" in text

@@ -184,3 +184,11 @@ def test_holiday_table_shape():
 def test_month_counts_from_next_day(start, n, unit, end):
     """초일 불산입이면 기산일(다음 날) 기준 — 기산일이 월초면 그 달 말일(민법 제157조·제160조)."""
     assert D.compute(start, n=n, unit=unit)["raw_end"] == end
+
+
+def test_interest_rejects_overlapping_segments():
+    """이율 바뀌는 날을 두 구간에 넣으면 그 날을 두 번 셈한다 — 겹치면 거부(Codex 지적 6)."""
+    with pytest.raises(ValueError):
+        C.interest(10000000, [("2026-01-01", "2026-01-31", "민사"), ("2026-01-31", "2026-02-28", "소촉법")])
+    r = C.interest(10000000, [("2026-02-01", "2026-02-28", "소촉법"), ("2026-01-01", "2026-01-31", "민사")])
+    assert [s["from"] for s in r["segments"]] == ["2026-01-01", "2026-02-01"]

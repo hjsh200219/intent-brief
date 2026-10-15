@@ -52,12 +52,16 @@ def _docx_paragraphs(path):
                 parts.append("\n")
         return "".join(parts).strip()
 
-    for child in list(body) if body is not None else []:
-        if child.tag == W + "p":
-            out.append(para_text(child))
-        elif child.tag == W + "tbl":
-            for p in child.iter(W + "p"):
-                out.append(para_text(p))
+    def walk(node):
+        # 문단은 표·콘텐츠 컨트롤(w:sdt)·변경 추적(w:ins) 같은 래퍼 안에도 있다 — 문서 순서대로 내려가며 모은다
+        for child in node:
+            if child.tag == W + "p":
+                out.append(para_text(child))
+            else:
+                walk(child)
+
+    if body is not None:
+        walk(body)
     return [t for t in out if t]
 
 

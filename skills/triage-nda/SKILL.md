@@ -11,7 +11,7 @@ allowed-tools: Bash(python3:*), Bash(python:*), Bash(py:*)
 ## 1. 받기·기준
 
 1. NDA(파일·붙여 넣은 글)를 받는다. 비밀유지 외에 독점·물량·대금 같은 영업 조건이 들어 있으면 바로 RED 「NDA 아님 — review-contract 로 전면 검토」로 분류한다.
-2. `python3 "$R/playbook.py" show nda` — `default: true` 면 번들 기본값으로 검토함을 보고서에 적는다. 사무소 기준을 만들려면 `python3 "$R/playbook.py" init nda` 후 그 파일을 고친다.
+2. `python3 "$R/playbook.py" show nda` — `default: true` 면 번들 기본값으로 검토함을 보고서에 적는다. 사무소 기준을 만들려면 `python3 "$R/playbook.py" init nda` 후 그 파일을 고친다. 의뢰인별 기준은 `--profile <의뢰인>` 을 붙인다(없으면 사무소 기준을 쓴다).
 3. 의뢰인이 정보를 주는 쪽인지, 받는 쪽인지, 양쪽인지 자료로 판단한다. 판단할 수 없으면 한 번 묻는다.
 
 ## 2. 점검표

@@ -459,12 +459,24 @@ def _download_form(seq):
     return name, ctype, body
 
 
+FORM_MAGIC = (b"%PDF", b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1", b"PK\x03\x04", b"HWP Document File")  # PDF·HWP 5(OLE)·HWPX(ZIP)·HWP 3
+
+
+def _check_form(ctype, body):
+    """법제처는 없는 번호·점검 중에도 HTTP 200 으로 HTML 을 준다 — 그것을 서식 파일로 저장하지 않는다."""
+    if not body or ctype.startswith("text/") or body[:512].lstrip()[:1] == b"<":
+        raise Unavailable("서식 파일 대신 오류 페이지가 왔습니다 — 파일 번호(form-search 의 hwp·pdf 값)를 확인하거나 나중에 다시 시도")
+    if not body.startswith(FORM_MAGIC):
+        raise Unavailable("서식 파일 형식을 알 수 없습니다(PDF·HWP·HWPX 가 아님 — 저장하지 않음)")
+
+
 def get_form(seq, out_dir):
     """서식 파일을 out_dir 에 저장 — 같은 이름이 있으면 _2, _3 … 을 붙인다(덮어쓰지 않음)."""
     seq = str(seq).strip()
     if not seq.isdigit():
         raise P.BriefError("파일 번호는 숫자입니다(form-search 결과의 hwp·pdf 값)")
     name, ctype, body = _download_form(seq)
+    _check_form(ctype, body)
     ext = {"application/pdf": ".pdf", "application/hwp": ".hwp", "application/x-hwp": ".hwp"}.get(ctype, "")
     base = _BAD_NAME.sub("_", os.path.basename(name.replace("\\", "/"))).strip(" .") or "서식_%s%s" % (seq, ext)
     stem, suffix = os.path.splitext(base)

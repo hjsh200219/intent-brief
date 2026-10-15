@@ -112,3 +112,14 @@ def test_docx_utf16_entities_rejected(tmp_path):
         z.writestr("word/document.xml", xml.encode("utf-16"))
     with pytest.raises(ValueError):
         T.read_doc(path)
+
+
+def test_docx_content_controls_are_read(tmp_path):
+    """콘텐츠 컨트롤(w:sdt) 안의 문단도 문서 순서대로 읽는다(Codex 지적 3)."""
+    import render_docx as R
+    body = ('<w:p><w:r><w:t>앞 문단</w:t></w:r></w:p>'
+            '<w:sdt><w:sdtContent><w:p><w:r><w:t>[확인 필요: 청구금액]</w:t></w:r></w:p></w:sdtContent></w:sdt>'
+            '<w:p><w:r><w:t>뒤 문단</w:t></w:r></w:p>')
+    path = str(tmp_path / "sdt.docx")
+    R.write_docx(path, body)
+    assert T.read_doc(path)["paragraphs"] == ["앞 문단", "[확인 필요: 청구금액]", "뒤 문단"]

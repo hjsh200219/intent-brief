@@ -9,7 +9,7 @@ import html
 import json
 import re
 import sys
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlunparse
 
 KEYWORDS = re.compile(r"(?i)/(api|graphql|gql|rest|v\d+|auth|login|signin|sign-in|token|session|search|ajax|json)(/|$|\?)")
 AUTH = re.compile(r"(?i)(login|signin|sign-in|auth|token|session|oauth)")
@@ -24,9 +24,35 @@ FORM = re.compile(r"""(?is)<form\b([^>]*)>""")
 ATTR = re.compile(r"""(?is)\b(action|method)\s*=\s*["']([^"']*)["']""")
 
 
+DEFAULT_PORTS = {"http": 80, "https": 443}
+
+
+def _origin(url):
+    u = urlparse(url)
+    try:
+        port = u.port or DEFAULT_PORTS.get(u.scheme)
+    except ValueError:  # 숫자가 아닌 포트
+        return None
+    return (u.scheme, u.hostname, port) if u.scheme in DEFAULT_PORTS and u.hostname else None
+
+
 def _same_host(url, base):
-    u, b = urlparse(url), urlparse(base)
-    return u.scheme in ("http", "https") and u.hostname == b.hostname
+    """같은 origin(scheme·호스트·포트)만 — 같은 호스트의 다른 포트는 다른 서비스일 수 있다."""
+    o = _origin(url)
+    return o is not None and o == _origin(base)
+
+
+def clean_url(url):
+    """저장·출력용 주소 — 계정 정보·쿼리 값(토큰·검색어일 수 있다)·fragment 를 뺀다."""
+    u = urlparse(url)
+    host = u.hostname or ""
+    if ":" in host:
+        host = "[%s]" % host
+    try:
+        port = u.port
+    except ValueError:
+        port = None
+    return urlunparse((u.scheme, host + (":%d" % port if port else ""), u.path, "", "", ""))
 
 
 def script_urls(page_html, base):
@@ -50,7 +76,7 @@ def form_actions(page_html, base):
             continue
         url = urljoin(base, html.unescape(a["action"]))
         if _same_host(url, base):
-            item = {"url": url, "method": (a.get("method") or "GET").upper()}
+            item = {"url": clean_url(url), "method": (a.get("method") or "GET").upper()}
             if item not in out:
                 out.append(item)
     return out
@@ -75,8 +101,8 @@ def find_endpoints(text, base):
             continue
         if lit.startswith(("http://", "https://")):
             if not _same_host(lit, base):
-                if "/api" in lit and lit not in external:
-                    external.append(lit.split("?")[0])
+                if "/api" in lit and clean_url(lit) not in external:
+                    external.append(clean_url(lit))
                 continue
             path = urlparse(lit).path or "/"
         elif lit.startswith("/") and not lit.startswith("//"):
@@ -109,7 +135,8 @@ def main(argv=None):
     a = ap.parse_args(argv)
     text = "\n".join(open(f, encoding="utf-8", errors="replace").read() for f in a.files)
     out = find_endpoints(text, a.base)
-    out.update(ok=True, scripts=script_urls(text, a.base), inline_state=inline_state(text), forms=form_actions(text, a.base))
+    out.update(ok=True, scripts=[clean_url(u) for u in script_urls(text, a.base)], inline_state=inline_state(text),
+               forms=form_actions(text, a.base))
     print(json.dumps(out, ensure_ascii=False, indent=1))
     return 0
 
