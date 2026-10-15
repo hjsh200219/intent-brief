@@ -1,0 +1,17 @@
+{
+  "description": "세션 시작 때 사건메모 「주요 일정」에서 14일 안의 기한·기일을 알린다(없으면 출력 없음)",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/litigation-calc/scripts/dday.py\" hook 2>/dev/null || python \"${CLAUDE_PLUGIN_ROOT}/skills/litigation-calc/scripts/dday.py\" hook 2>/dev/null || py -3 \"${CLAUDE_PLUGIN_ROOT}/skills/litigation-calc/scripts/dday.py\" hook 2>/dev/null || true",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
