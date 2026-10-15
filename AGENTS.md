@@ -50,6 +50,7 @@ python3 dev/verify_docs.py                                                      
 - 테스트는 실제 빅케이스를 부르지 않는다(`tests/conftest.py` 가 `INTENT_BRIEF_NO_CASESEARCH=1`, `tests/case_search/` 는 가짜 HTTP). 빅케이스는 이용 범위상 사람 빈도로만 부르고, 대량 수집·재배포는 하지 않는다. 실계정 자료(토큰·비밀번호·조회한 판결의 실명)는 커밋하지 않는다.
 - `dev/replay.py`·`dev/e2e.py` 는 `claude -p` 를 여러 번 부른다(비용 발생). 판정 기준은 `dev/e2e.py` 의 `judge_run`. 선택 환경변수: `INTENT_BRIEF_TOKEN_FILE`(무인 실행 토큰 파일), `JEV_DIR`(블라인드 판별용 Jev 클라이언트), `INTENT_BRIEF_DEMO_DIR`(casedb 계약 테스트의 데모 원본).
 - 공개 repo 다. 픽스처의 인명·사건번호는 가명이며 실제 의뢰인 자료를 넣지 않는다.
+- 이 Mac 에서 `main` 커밋은 곧 공개 게시다 — post-commit 훅이 자동 push 하고 Claude·Codex 설치본을 갱신한다([R-push] 예외 열다섯, 끄기 `LAWFIRM_AUTOPUSH=0`, 로그 `~/Library/Logs/lawfirm-autopush.log`). 올리면 안 되는 작업은 다른 브랜치에 둔다. 설치한 사람에게 퍼뜨릴 변경은 버전을 올린다(같은 버전이면 업데이트되지 않는다).
 - 의도 목록·기본값 개정은 사용 통계(`intent.py stats`)를 근거로 한다.
 - 내장 스킬에 MCP·Cowork 경로·AskUserQuestion 을 다시 넣지 않는다(`tests/test_embedded_skills.py` 가 막는다). lyn-lawfirm 원본과는 자동 동기화하지 않는다.
 
