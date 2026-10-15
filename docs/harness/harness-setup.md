@@ -41,3 +41,8 @@
 | `casesearch.py` — 빅케이스 감지·호출(같은 플러그인의 `bigcase.py` 를 `uv run` 으로) | `cite_check`, SKILL.md·내장 스킬 |
 | `skills/case-search/scripts/foreigncase.py` — 해외 판례(미국·독일) 검색·본문·토큰 보관 | `skills/case-search/SKILL.md`, `commands/law-key-setup.md` |
 | `skills/case-search/scripts/bigcase.py` — 빅케이스 로그인·토큰·검색·전문(uv inline 의존성) | `casesearch.py`, `skills/case-search/SKILL.md`, `commands/case-search-setup.md` |
+| `skills/litigation-calc/scripts/deadline.py` — 기간 만료일(민법 제157·160·161조·형소법 제66조)·`IMMINENT_DAYS`·공휴일 표 | `dday.py`, litigation-calc·brainstorming-lawfirm SKILL.md |
+| `skills/litigation-calc/scripts/costs.py` — 인지액·송달료 회분·지연손해금 | litigation-calc·brainstorming-lawfirm SKILL.md |
+| `skills/brainstorming-lawfirm/scripts/risk.py` — 심각도×가능성 점수·정렬 표 | brainstorming-lawfirm SKILL.md |
+| `skills/review-contract/scripts/playbook.py` — 사무소 플레이북 위치·기본값·init(덮지 않음) | review-contract·triage-nda SKILL.md |
+| `skills/site-api/scripts/extract.py`·`scaffold.py` — API 후보 추출·클라이언트 생성(한 번 치환, 호스트 고정) | `discover.py`, site-api SKILL.md |

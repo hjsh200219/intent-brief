@@ -31,6 +31,8 @@
 | L2 절차 | `skills/intent-brief/SKILL.md`, `skills/case-search/SKILL.md`, 내장 스킬 6개 `skills/*/SKILL.md`, `commands/` | L1, L3(명령으로 호출), 공용 `references/`(law-lookup·cta-config) |
 | L3 런타임 | `skills/intent-brief/scripts/` | 표준 라이브러리, L1, 같은 레이어 |
 | L3c 해외 판례 런타임 | `skills/case-search/scripts/foreigncase.py` | 표준 라이브러리만(Python 3.9) — 다른 런타임 파일을 import 하지 않는다 |
+| L3d 0.6.0 스킬 런타임 | `skills/litigation-calc/scripts/`·`brainstorming-lawfirm/scripts/`·`review-contract/scripts/`·`independent-review/scripts/`·`site-api/scripts/{extract,scaffold}.py` | 표준 라이브러리만(Python 3.9). `dday.py` 만 L3 의 `_paths`·`memo`(사건메모 일정 절)를 import 한다 |
+| L3e 사이트 API 발굴·생성 클라이언트 | `skills/site-api/scripts/discover.py`, `skills/site-api/templates/client.py.tmpl` | uv inline 의존성(Scrapling·keyring). 생성 클라이언트는 플러그인 밖 작업 폴더 `site-api/` 에 둔다 |
 | L3b 빅케이스 런타임 | `skills/case-search/scripts/bigcase.py` | uv inline 의존성(Scrapling·keyring) — L3 는 import 하지 않고 하위 프로세스로만 부른다 |
 | L4 개발 | `dev/`, `tests/` | 전부 |
 
